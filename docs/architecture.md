@@ -1,0 +1,92 @@
+# Rinde — arquitectura e iteraciones
+
+## Alcance entregado
+
+Iteración 5: Next.js nativo, autenticación, perfil, plataformas, jornadas,
+ingresos, categorías, gastos frecuentes, combustible y reportes. Los datos se
+guardan con RLS, restricciones de propiedad y un historial atómico de ediciones
+de ingresos. Los reportes consultan los registros propios del día, semana o mes
+elegidos y el PDF se construye localmente en el navegador a partir de ese mismo
+resumen.
+La vista pública `/preview` no
+consulta datos, no autentica y no guarda nada. Nunca es una excepción al control
+de acceso de `/app`.
+
+## Una aplicación, una base de datos
+
+App Router y Server Components para renderizar y leer. Server Actions para las
+mutaciones del usuario; Route Handlers sólo para callbacks de Auth. Componentes
+cliente para formularios y navegación activa. PostgreSQL garantiza integridad y
+propiedad mediante restricciones y RLS. No hay ORM, servidor separado ni estado
+global de cliente. El SDK utiliza siempre el contexto del usuario autenticado.
+
+`proxy.ts` renueva cookies; `requireUser()` verifica la sesión con `getUser()` junto
+al acceso a datos. La caché React es por render/request, nunca una caché global de
+datos entre usuarios. `/app` se renderiza dinámicamente; sus respuestas no deben
+ser cacheadas por un CDN. Los mensajes de error no incluyen tokens, SQL o detalles
+internos. Las redirecciones posteriores al correo usan una lista cerrada.
+
+## Responsabilidades y carpetas
+
+| Ruta                     | Responsabilidad                                           |
+| ------------------------ | --------------------------------------------------------- |
+| `src/app`                | Rutas, layouts, boundaries y callbacks                    |
+| `src/components/ui`      | Primitivas shadcn/ui locales: Button, Input, Card, Badge  |
+| `src/components/layout`  | Navegación inferior, sidebar y estructura de acceso       |
+| `src/features/auth`      | Formularios y acciones de autenticación                   |
+| `src/features/settings`  | Lectura de cuenta y actualización de perfil               |
+| `src/features/dashboard` | Resumen inicial y acceso a la jornada                     |
+| `src/features/shifts`    | Plataformas, jornadas, validación, acciones y consultas   |
+| `src/features/earnings`  | Ingresos, acumulados, validación, acciones y consultas    |
+| `src/features/expenses`  | Categorías, gastos, recurrencias y recargas               |
+| `src/features/reports`   | Consultas, cálculos, visualización y descarga de reportes |
+| `src/lib/finance`        | Cálculos exactos de importes para presentación            |
+| `src/lib/auth`           | Sesión, validaciones y contratos compartidos              |
+| `src/lib/supabase`       | Clientes de servidor y navegador                          |
+| `src/types`              | Contrato tipado de la base de datos                       |
+| `supabase/migrations`    | SQL versionado                                            |
+| `tests`                  | Validaciones y pruebas SQL con dos propietarios           |
+| `docs`                   | Diseño, modelo completo previsto y verificaciones         |
+
+Al conectar Supabase se puede regenerar `src/types/database.ts` con su CLI. El
+tipo incluido refleja las tablas de cuentas y jornadas y mantiene TypeScript
+estricto. El SDK cliente está preparado pero no se utiliza para exponer
+escrituras amplias.
+
+## Dependencias
+
+Next, React y TypeScript forman la aplicación. Tailwind/PostCSS y tw-animate-css
+dan estilos compatibles con shadcn/ui. CVA, clsx, tailwind-merge y Radix Slot son
+las utilidades de sus componentes locales. Lucide aporta iconos. Zod valida las
+entradas en el servidor. `@supabase/ssr` y `supabase-js` resuelven sesión y datos.
+`server-only` impide importar acceso de servidor desde el cliente. `pdf-lib`
+construye el PDF en el navegador: no requiere una ruta de descarga ni comparte
+los movimientos con otro servicio.
+
+Vitest es el ejecutor de pruebas; PGlite ejecuta PostgreSQL embebido para comprobar
+la migración y RLS sin requerir Docker. ESLint y sus reglas de Next verifican el
+código. Prettier mantiene un formato de código consistente. ESLint 9 conserva la
+compatibilidad declarada por los plugins del preset oficial de Next instalado.
+Los gráficos de reportes se componen con elementos de interfaz accesibles y CSS,
+manteniendo baja la carga inicial. La PWA, metas y borradores corresponden a
+etapas futuras.
+
+Se utiliza Webpack mediante la opción oficial de Next para desarrollo y build,
+incluyendo Windows. El lockfile fija la resolución exacta. No hay scripts que
+envíen datos del usuario a servicios externos adicionales.
+
+## Próximas etapas (sin implementación automática)
+
+6. Metas, PWA, borradores y sincronización pendiente, rendimiento y QA integral.
+
+## Fuentes oficiales consultadas el 22/10/2026
+
+- https://nextjs.org/docs/app/getting-started/installation
+- https://nextjs.org/docs/app/api-reference/file-conventions/proxy
+- https://supabase.com/docs/guides/auth/server-side/creating-a-client
+- https://supabase.com/docs/guides/auth/passwords
+- https://ui.shadcn.com/docs/installation/manual
+
+Se ha mantenido Next.js nativo, como exige el proyecto. La entrega está preparada
+para ejecutar en Node.js; no se ha sustituido por otro framework para publicarla
+en un hosting de Workers.

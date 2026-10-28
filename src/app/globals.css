@@ -1,0 +1,159 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-panel: var(--panel);
+  --color-panel-foreground: var(--panel-foreground);
+  --color-panel-muted: var(--panel-muted);
+  --color-panel-accent: var(--panel-accent);
+  --color-notice: var(--notice);
+  --color-notice-border: var(--notice-border);
+  --color-notice-foreground: var(--notice-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-status-inactive: var(--status-inactive);
+  --font-sans: Arial, Helvetica, sans-serif;
+}
+:root {
+  --background: #f7f8fa;
+  --foreground: #202a3a;
+  --card: #fff;
+  --primary: #cc481c;
+  --primary-foreground: #fff;
+  --secondary: #fff0e7;
+  --secondary-foreground: #a53c13;
+  --muted: #f1f2f3;
+  --muted-foreground: #626a76;
+  --border: #e6e8ec;
+  --input: #dce0e5;
+  --ring: #e65b2c;
+  --destructive: #b42318;
+  --panel: #202d3d;
+  --panel-foreground: #fff;
+  --panel-muted: #b3b9c2;
+  --panel-accent: #ff9e73;
+  --notice: #fff9ee;
+  --notice-border: #ebd9c5;
+  --notice-foreground: #77552b;
+  --success: #e8f5ea;
+  --success-foreground: #236b3b;
+  --status-inactive: #b3b9c2;
+  color-scheme: light;
+}
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button,
+a,
+input {
+  touch-action: manipulation;
+}
+button:not(:disabled),
+a {
+  cursor: pointer;
+}
+::selection {
+  background: var(--secondary);
+  color: var(--foreground);
+}
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+.safe-bottom {
+  padding-bottom: calc(0.65rem + env(safe-area-inset-bottom));
+}
+.app-main {
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+}
+.page-enter > * {
+  animation: page-item-enter 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.page-enter > :only-child {
+  animation: none;
+}
+.page-enter > :only-child > * {
+  animation: page-item-enter 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.page-enter > *:nth-child(1),
+.page-enter > :only-child > *:nth-child(1) {
+  animation-delay: 30ms;
+}
+.page-enter > *:nth-child(2),
+.page-enter > :only-child > *:nth-child(2) {
+  animation-delay: 75ms;
+}
+.page-enter > *:nth-child(3),
+.page-enter > :only-child > *:nth-child(3) {
+  animation-delay: 120ms;
+}
+.page-enter > *:nth-child(4),
+.page-enter > :only-child > *:nth-child(4) {
+  animation-delay: 165ms;
+}
+.page-enter > *:nth-child(5),
+.page-enter > :only-child > *:nth-child(5) {
+  animation-delay: 210ms;
+}
+.page-enter > *:nth-child(n + 6),
+.page-enter > :only-child > *:nth-child(n + 6) {
+  animation-delay: 250ms;
+}
+@keyframes page-item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.modal-scroll,
+.modal-popover {
+  scrollbar-width: thin;
+  scrollbar-color: var(--input) transparent;
+}
+.modal-scroll::-webkit-scrollbar,
+.modal-popover::-webkit-scrollbar {
+  width: 0.45rem;
+}
+.modal-scroll::-webkit-scrollbar-thumb,
+.modal-popover::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+  background-color: var(--input);
+}
+@media (min-width: 1024px) {
+  .app-main {
+    padding-bottom: 3rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
