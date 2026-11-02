@@ -4,7 +4,12 @@ import { getSupabaseConfig } from "@/lib/config";
 
 export async function proxy(request: NextRequest) {
   const config = getSupabaseConfig();
-  if (!config) return NextResponse.redirect(new URL("/setup", request.url));
+  if (!config) {
+    if (request.nextUrl.pathname.startsWith("/app")) {
+      return NextResponse.redirect(new URL("/setup", request.url));
+    }
+    return NextResponse.next({ request });
+  }
   let response = NextResponse.next({ request });
   const supabase = createServerClient(config.url, config.key, {
     cookieOptions: {
@@ -32,4 +37,8 @@ export async function proxy(request: NextRequest) {
   response.headers.set("Cache-Control", "private, no-store");
   return response;
 }
-export const config = { matcher: ["/app/:path*", "/auth/update-password"] };
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};

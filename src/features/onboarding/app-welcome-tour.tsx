@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -32,9 +32,15 @@ export function AppWelcomeTour({ enabled }: { enabled: boolean }) {
   const [step, setStep] = useState<number | null>(null);
   const [spotlight, setSpotlight] = useState<Spotlight | null>(null);
 
+  const finishTour = useCallback(() => {
+    window.localStorage.setItem(storageKey, "complete");
+    setStep(null);
+  }, []);
+
   useEffect(() => {
     if (!enabled || window.localStorage.getItem(storageKey)) return;
-    setStep(0);
+    const frame = window.requestAnimationFrame(() => setStep(0));
+    return () => window.cancelAnimationFrame(frame);
   }, [enabled]);
 
   useEffect(() => {
@@ -69,12 +75,7 @@ export function AppWelcomeTour({ enabled }: { enabled: boolean }) {
       window.removeEventListener("resize", updateSpotlight);
       window.removeEventListener("scroll", updateSpotlight, true);
     };
-  }, [step]);
-
-  const finishTour = () => {
-    window.localStorage.setItem(storageKey, "complete");
-    setStep(null);
-  };
+  }, [finishTour, step]);
 
   if (step === null || !spotlight) return null;
   const current = steps[step];
