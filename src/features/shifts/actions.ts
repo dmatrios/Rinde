@@ -187,6 +187,7 @@ export async function startShift(
   const parsed = startShiftSchema.safeParse({
     platformId: form.get("platformId"),
     odometerStart: form.get("odometerStart"),
+    openingCash: form.get("openingCash") || "0",
   });
   if (!parsed.success)
     return failure(parsed.error.issues[0]?.message ?? "Revisa los datos.");
@@ -195,6 +196,7 @@ export async function startShift(
     const { error } = await supabase.rpc("start_work_shift", {
       p_platform_id: parsed.data.platformId,
       p_odometer_start: parsed.data.odometerStart,
+      p_opening_cash: parsed.data.openingCash,
     });
     if (error) {
       if (error.message.includes("open shift"))

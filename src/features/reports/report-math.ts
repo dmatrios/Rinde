@@ -4,6 +4,7 @@ import type {
   Expense,
   ExpenseCategory,
   FuelRefill,
+  PaymentReceipt,
   UserPlatform,
 } from "@/types/database";
 
@@ -44,6 +45,7 @@ type ReportSources = {
   earnings: Earning[];
   expenses: Expense[];
   fuel: FuelRefill[];
+  receipts: PaymentReceipt[];
   platforms: UserPlatform[];
 };
 
@@ -83,6 +85,35 @@ export function buildReportPeriod(
       day.orders += earning.orders ?? 0;
     }
     const platform = platformsById.get(earning.platform_id) ?? "Plataforma";
+    byPlatform.set(platform, (byPlatform.get(platform) ?? 0) + cents);
+  }
+
+  for (const receipt of sources.receipts) {
+    const date = peruDate(new Date(receipt.occurred_at));
+    if (!includedDates.has(date)) continue;
+    const coveredEarnings = sources.earnings.filter(
+      (earning) =>
+        (earning.mode === "shift" &&
+          earning.shift_id === receipt.shift_id &&
+          receipt.shift_id !== null) ||
+        (earning.mode === "daily" &&
+          earning.date === date &&
+          earning.platform_id === receipt.platform_id),
+    );
+    if (coveredEarnings.length) {
+      if (coveredEarnings.every((earning) => earning.orders === null)) {
+        const day = daily.get(date);
+        if (day) day.orders += 1;
+      }
+      continue;
+    }
+    const cents = decimalToCents(receipt.amount);
+    const day = daily.get(date);
+    if (day) {
+      day.grossCents += cents;
+      day.orders += 1;
+    }
+    const platform = platformsById.get(receipt.platform_id) ?? "Plataforma";
     byPlatform.set(platform, (byPlatform.get(platform) ?? 0) + cents);
   }
 

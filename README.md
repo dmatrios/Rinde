@@ -19,6 +19,9 @@ Nombre provisional. Sin datos personales precargados ni credenciales incluidas.
 - Categorías operativas o personales, gastos editables, gastos frecuentes que se
   confirman al registrarlos y recargas de combustible separadas para no duplicar
   importes.
+- Efectivo inicial opcional por jornada, cobros en efectivo, Yape, Plin o tarjeta,
+  vuelto calculado, gastos y recargas con método de pago dentro o fuera de la
+  jornada, saldo de caja e historial detallado de movimientos.
 - Reportes navegables por día, semana o mes, con desglose por plataforma y
   gasto, pedidos registrados, detalle en las gráficas y descarga local de un
   PDF con el mismo resumen.
@@ -101,6 +104,14 @@ orden:
 `supabase/migrations/20261028193652_pause_odometer_readings.sql`
 
 `supabase/migrations/20261028204822_onboarding_settings_permission.sql`
+
+`supabase/migrations/20261102214913_shift_cash_movements.sql`
+
+`supabase/migrations/20261102222100_plin_payment_method.sql`
+
+Las migraciones de movimientos y Plin fueron aplicadas al proyecto Rinde por el
+usuario el 02/11/2026. No las ejecutes otra vez. Verifica el flujo con una sesión
+de la aplicación después de publicarlo.
 
 La migración está envuelta en una transacción. Si falla, corrige el error antes de
 reintentar; no ejecutes sólo fragmentos. No contiene datos reales ni borra tablas

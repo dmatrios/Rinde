@@ -8,6 +8,16 @@ guardan con RLS, restricciones de propiedad y un historial atómico de ediciones
 de ingresos. Los reportes consultan los registros propios del día, semana o mes
 elegidos y el PDF se construye localmente en el navegador a partir de ese mismo
 resumen.
+La ampliación local de movimientos registra cobros por método de pago, efectivo
+inicial y pagos dentro o fuera de la jornada. Los cobros aparecen en reportes;
+cuando existe un ingreso total del mismo ámbito, ese total los cubre y evita
+sumarlos dos veces. El saldo de caja se calcula en PostgreSQL a partir del
+efectivo inicial, cobros en efectivo y gastos en efectivo vinculados a la jornada.
+La migración `20261102214913_shift_cash_movements.sql` fue aplicada por el
+usuario el 02/11/2026; queda pendiente verificar el flujo con una sesión real
+antes de publicar este código.
+La migración `20261102222100_plin_payment_method.sql` también fue aplicada
+por el usuario el 02/11/2026 y permite Plin como método de pago independiente.
 La vista pública `/preview` no
 consulta datos, no autentica y no guarda nada. Nunca es una excepción al control
 de acceso de `/app`.
@@ -39,6 +49,7 @@ internos. Las redirecciones posteriores al correo usan una lista cerrada.
 | `src/features/shifts`    | Plataformas, jornadas, validación, acciones y consultas   |
 | `src/features/earnings`  | Ingresos, acumulados, validación, acciones y consultas    |
 | `src/features/expenses`  | Categorías, gastos, recurrencias y recargas               |
+| `src/features/movements` | Cobros, métodos de pago e historial de movimientos        |
 | `src/features/reports`   | Consultas, cálculos, visualización y descarga de reportes |
 | `src/lib/finance`        | Cálculos exactos de importes para presentación            |
 | `src/lib/auth`           | Sesión, validaciones y contratos compartidos              |

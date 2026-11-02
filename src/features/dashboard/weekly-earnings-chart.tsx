@@ -147,18 +147,38 @@ function DashboardChartTooltip({
 }
 
 function formatCompactChartAmount(cents: number) {
+  if (cents >= 1_000_000_00) return `${Math.round(cents / 100_000_00) / 10} M`;
+  if (cents >= 1_000_000) return `${Math.round(cents / 10_000) / 10} mil`;
   const amount = cents / 100;
-  return new Intl.NumberFormat("es-PE", {
-    maximumFractionDigits: amount < 100 ? 2 : 0,
-    notation: amount >= 10_000 ? "compact" : "standard",
-  }).format(amount);
+  return amount < 100 ? amount.toFixed(2) : String(Math.round(amount));
 }
 
 function formatFullDay(date: string) {
-  return new Intl.DateTimeFormat("es-PE", {
-    day: "numeric",
-    month: "short",
-    weekday: "long",
-    timeZone: "UTC",
-  }).format(new Date(`${date}T12:00:00Z`));
+  const [year = 1970, month = 1, day = 1] = date.split("-").map(Number);
+  const weekdays = [
+    "domingo",
+    "lunes",
+    "martes",
+    "miércoles",
+    "jueves",
+    "viernes",
+    "sábado",
+  ];
+  const months = [
+    "ene",
+    "feb",
+    "mar",
+    "abr",
+    "may",
+    "jun",
+    "jul",
+    "ago",
+    "set",
+    "oct",
+    "nov",
+    "dic",
+  ];
+  const weekday =
+    weekdays[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
+  return `${weekday}, ${day} ${months[month - 1]}`;
 }

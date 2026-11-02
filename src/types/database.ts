@@ -38,6 +38,7 @@ export type Vehicle = {
   updated_at: string;
 };
 export type WorkShiftStatus = "active" | "paused" | "completed";
+export type PaymentMethod = "cash" | "yape" | "plin" | "card";
 export type WorkShift = {
   id: string;
   user_id: string;
@@ -47,6 +48,7 @@ export type WorkShift = {
   status: WorkShiftStatus;
   odometer_start: number | null;
   odometer_end: number | null;
+  opening_cash: number;
   created_at: string;
   updated_at: string;
 };
@@ -119,6 +121,9 @@ export type Expense = {
   description: string;
   notes: string | null;
   paid_with_ruc: boolean;
+  shift_id: string | null;
+  payment_method: PaymentMethod | null;
+  cash_paid: number | null;
   recurring_rule_id: string | null;
   due_date: string | null;
   created_at: string;
@@ -132,9 +137,24 @@ export type FuelRefill = {
   liters: number | null;
   odometer_km: number | null;
   full_tank: boolean;
+  shift_id: string | null;
+  payment_method: PaymentMethod | null;
+  cash_paid: number | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
+};
+export type PaymentReceipt = {
+  id: string;
+  user_id: string;
+  shift_id: string | null;
+  platform_id: string;
+  occurred_at: string;
+  amount: number;
+  payment_method: PaymentMethod;
+  cash_received: number | null;
+  description: string | null;
+  created_at: string;
 };
 type Table<Row, Insert, Update> = {
   Row: Row;
@@ -187,12 +207,14 @@ export type Database = {
           status?: WorkShiftStatus;
           odometer_start?: number | null;
           odometer_end?: number | null;
+          opening_cash?: number;
         },
         {
           ended_at?: string | null;
           status?: WorkShiftStatus;
           odometer_start?: number | null;
           odometer_end?: number | null;
+          opening_cash?: number;
         }
       >;
       shift_pauses: Table<
@@ -257,6 +279,9 @@ export type Database = {
           description: string;
           notes?: string | null;
           paid_with_ruc?: boolean;
+          shift_id?: string | null;
+          payment_method?: PaymentMethod | null;
+          cash_paid?: string | null;
           recurring_rule_id?: string | null;
           due_date?: string | null;
         },
@@ -267,6 +292,9 @@ export type Database = {
           description?: string;
           notes?: string | null;
           paid_with_ruc?: boolean;
+          shift_id?: string | null;
+          payment_method?: PaymentMethod | null;
+          cash_paid?: string | null;
         }
       >;
       fuel_refills: Table<
@@ -279,6 +307,9 @@ export type Database = {
           liters?: string | null;
           odometer_km?: string | null;
           full_tank?: boolean;
+          shift_id?: string | null;
+          payment_method?: PaymentMethod | null;
+          cash_paid?: string | null;
           notes?: string | null;
         },
         {
@@ -287,15 +318,47 @@ export type Database = {
           liters?: string | null;
           odometer_km?: string | null;
           full_tank?: boolean;
+          shift_id?: string | null;
+          payment_method?: PaymentMethod | null;
+          cash_paid?: string | null;
           notes?: string | null;
+        }
+      >;
+      payment_receipts: Table<
+        PaymentReceipt,
+        {
+          user_id: string;
+          shift_id?: string | null;
+          platform_id: string;
+          occurred_at?: string;
+          amount: string;
+          payment_method: PaymentMethod;
+          cash_received?: string | null;
+          description?: string | null;
+        },
+        {
+          shift_id?: string | null;
+          platform_id?: string;
+          amount?: string;
+          payment_method?: PaymentMethod;
+          cash_received?: string | null;
+          description?: string | null;
         }
       >;
     };
     Views: { [_ in never]: never };
     Functions: {
+      get_shift_cash_balance: {
+        Args: { p_shift_id: string };
+        Returns: number | null;
+      };
       delete_own_account: { Args: Record<string, never>; Returns: undefined };
       start_work_shift: {
-        Args: { p_platform_id: string; p_odometer_start: number | null };
+        Args: {
+          p_platform_id: string;
+          p_odometer_start: number | null;
+          p_opening_cash: number;
+        };
         Returns: WorkShift;
       };
       transition_work_shift: {

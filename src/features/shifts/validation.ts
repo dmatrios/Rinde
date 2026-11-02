@@ -25,6 +25,11 @@ const optionalOdometerSchema = z
 export const startShiftSchema = z.object({
   platformId: platformIdSchema,
   odometerStart: optionalOdometerSchema,
+  openingCash: z
+    .string()
+    .trim()
+    .regex(/^\d{1,12}(?:\.\d{1,2})?$/, "Ingresa un monto válido.")
+    .transform(Number),
 });
 
 export const shiftTransitionSchema = z.object({

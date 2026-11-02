@@ -18,6 +18,7 @@ export const displayNameSchema = z
 export const loginSchema = z.object({
   email: emailSchema,
   password: z.string().min(1, "Ingresa tu contraseña.").max(128),
+  rememberSession: z.preprocess((value) => value === "on", z.boolean()),
 });
 export const signupSchema = z.object({
   email: emailSchema,

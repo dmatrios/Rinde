@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { ModalPopover } from "@/components/ui/modal-popover";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { PaymentFields } from "@/features/expenses/payment-fields";
 import { useToast } from "@/components/ui/toast";
 import {
   recordRecurringExpense,
@@ -43,9 +44,17 @@ import type {
 } from "@/features/expenses/queries";
 import { initialActionState } from "@/lib/auth/types";
 import { decimalToCents, formatMoney } from "@/lib/finance/money";
-import type { ExpenseCategory, FuelRefill } from "@/types/database";
+import type {
+  ExpenseCategory,
+  FuelRefill,
+  PaymentMethod,
+} from "@/types/database";
+
+const paymentLabel = (method: PaymentMethod) =>
+  ({ cash: "Efectivo", yape: "Yape", plin: "Plin", card: "Tarjeta" })[method];
 
 type WorkspaceProps = {
+  activeShiftId: string | null;
   categories: ExpenseCategory[];
   expenses: ExpenseRecord[];
   fuel: FuelRefill[];
@@ -56,6 +65,7 @@ type WorkspaceProps = {
 };
 
 export function ExpensesWorkspace({
+  activeShiftId,
   categories,
   expenses,
   fuel,
@@ -182,6 +192,10 @@ export function ExpensesWorkspace({
                       <p className="mt-1 text-xs text-muted-foreground">
                         {expense.categoryName} ·{" "}
                         {formatDate(expense.occurred_at)}
+                        {expense.payment_method
+                          ? ` · ${paymentLabel(expense.payment_method)}`
+                          : ""}
+                        {expense.shift_id ? " · En jornada" : ""}
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -294,6 +308,10 @@ export function ExpensesWorkspace({
                           {refill.liters
                             ? ` · ${formatDecimal(refill.liters, 2)} L`
                             : ""}
+                          {refill.payment_method
+                            ? ` · ${paymentLabel(refill.payment_method)}`
+                            : ""}
+                          {refill.shift_id ? " · En jornada" : ""}
                         </p>
                       </div>
                       <Button
@@ -326,6 +344,7 @@ export function ExpensesWorkspace({
       </div>
 
       <ExpenseFormModal
+        activeShiftId={activeShiftId}
         key={`expense-${editingExpense?.id ?? "new"}-${expenseModalOpen}`}
         categories={categories}
         expense={editingExpense}
@@ -336,6 +355,7 @@ export function ExpensesWorkspace({
         onManageCategories={() => openCategoryManager("expense")}
       />
       <FuelFormModal
+        activeShiftId={activeShiftId}
         key={`fuel-${editingFuel?.id ?? "new"}-${fuelModalOpen}`}
         refill={editingFuel}
         open={fuelModalOpen}
@@ -483,6 +503,7 @@ function RecurringItem({ rule }: { rule: RecurringRecord }) {
 }
 
 export function ExpenseFormModal({
+  activeShiftId = null,
   categories,
   expense,
   managingCategories = false,
@@ -491,6 +512,7 @@ export function ExpenseFormModal({
   open,
   ruc,
 }: {
+  activeShiftId?: string | null;
   categories: ExpenseCategory[];
   expense: ExpenseRecord | null;
   managingCategories?: boolean;
@@ -560,6 +582,14 @@ export function ExpenseFormModal({
               />
             </Field>
           </div>
+          <PaymentFields
+            defaultMethod={expense?.payment_method}
+            defaultCashPaid={expense?.cash_paid}
+            amount={amount}
+            canLinkShift={!!activeShiftId && date === peruDate()}
+            linkedToShift={!!expense?.shift_id}
+            disabled={pending}
+          />
           <Field label="Descripción" htmlFor="expense-description">
             <Input
               id="expense-description"
@@ -625,10 +655,12 @@ export function ExpenseFormModal({
 }
 
 export function FuelFormModal({
+  activeShiftId = null,
   onOpenChange,
   open,
   refill,
 }: {
+  activeShiftId?: string | null;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   refill: FuelRefill | null;
@@ -708,6 +740,14 @@ export function FuelFormModal({
             />
           </Field>
         </div>
+        <PaymentFields
+          defaultMethod={refill?.payment_method}
+          defaultCashPaid={refill?.cash_paid}
+          amount={amount}
+          canLinkShift={!!activeShiftId && date === peruDate()}
+          linkedToShift={!!refill?.shift_id}
+          disabled={pending}
+        />
         <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-background/55 px-3.5 py-3 text-sm">
           <input
             type="checkbox"

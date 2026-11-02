@@ -47,13 +47,13 @@ export function AppWelcomeTour({ enabled }: { enabled: boolean }) {
     if (step === null) return;
     const currentStep = steps[step];
     if (!currentStep) {
-      finishTour();
-      return;
+      const frame = window.requestAnimationFrame(finishTour);
+      return () => window.cancelAnimationFrame(frame);
     }
     const target = getVisibleTarget(currentStep.target);
     if (!target) {
-      finishTour();
-      return;
+      const frame = window.requestAnimationFrame(finishTour);
+      return () => window.cancelAnimationFrame(frame);
     }
 
     const updateSpotlight = () => {

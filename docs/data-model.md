@@ -17,13 +17,14 @@ vincular, por ejemplo, la jornada de otro usuario aunque se conozca su UUID.
 | user_settings      | `user_id` PK; PEN, America/Lima, modo daily/shift y RUC opcional                                                                  | 1     |
 | user_platforms     | id, user_id, name, active; nombre normalizado único por usuario                                                                   | 1     |
 | vehicles           | user_id PK, name, odometer_km opcional; un vehículo principal                                                                     | 1     |
-| work_shifts        | id, user_id, platform_id, started_at, ended_at, status, odometer_start/end, orders opcional, notes                                | 2     |
+| work_shifts        | id, user_id, platform_id, started_at, ended_at, status, odometer_start/end, opening_cash                                          | 2     |
 | shift_pauses       | id, user_id, shift_id, started_at, ended_at                                                                                       | 2     |
 | earnings           | id, user_id, platform_id, date, mode, shift_id opcional, reported_amount, tips, bonuses, inclusion flags, orders, notes, revision | 3     |
 | earnings_history   | id, user_id, earnings_id, before/after JSONB, changed_at; sólo lectura para propietario                                           | 3     |
 | expense_categories | id, user_id, name, kind operational/personal, active                                                                              | 4     |
-| expenses           | id, user_id, category_id, occurred_at, amount, descripción, nota, indicador de pago con RUC y recurrencia opcional               | 4     |
-| fuel_refills       | id, user_id, occurred_at, amount, liters opcional, odometer_km opcional, full_tank, notes                                         | 4     |
+| expenses           | id, user_id, category_id, occurred_at, amount, descripción, nota, RUC, shift_id, payment_method y cash_paid opcionales            | 4     |
+| fuel_refills       | id, user_id, occurred_at, amount, liters, odometer_km, full_tank, notes, shift_id, payment_method y cash_paid opcionales          | 4     |
+| payment_receipts   | id, user_id, platform_id, shift_id opcional, occurred_at, amount, payment_method, cash_received y descripción opcional            | 5     |
 | recurring_expenses | id, user_id, category_id, amount, cadence weekly/monthly, anchor_date, active                                                     | 4     |
 | goals              | user_id PK, daily_income, weekly_income, weekly_minutes opcionales                                                                | 5     |
 
@@ -100,9 +101,16 @@ Indicadores previstos:
 - Ganancia bruta/h y operativa/h: denominadores de tiempo efectivo del mismo
   período. Sin horas, devolver ausencia de indicador, nunca infinito ni cero falso.
 
-Transferencias, propinas ya incluidas y efectivo cobrado por cuenta de la
-plataforma no se suman como nuevos ingresos. No existe módulo de cobros en esta
-etapa. Impuestos/descuentos se registrarán con naturaleza explícita y sin volver a
+Los cobros individuales cuentan como ingresos y como un pedido cuando no hay un
+ingreso total registrado para la misma jornada o plataforma y día. Cuando existe
+ese total, el cobro sigue visible en movimientos pero no se vuelve a sumar al
+reporte. El efectivo inicial no es ingreso: el saldo de caja de la jornada es
+efectivo inicial + cobros en efectivo − gastos y recargas en efectivo vinculados.
+El vuelto en cobros es efectivo entregado al cliente y no se descuenta otra vez
+del importe cobrado. En gastos y recargas, `cash_paid` permite mostrar el vuelto
+recibido sin descontarlo dos veces; el saldo de caja resta sólo el costo neto.
+Los gastos fuera de jornada cuentan en reportes, sin afectar esa caja.
+Impuestos/descuentos se registrarán con naturaleza explícita y sin volver a
 restar lo ya deducido del monto informado; no suponer porcentajes contractuales.
 
 ## Recurrencias, borradores e historial

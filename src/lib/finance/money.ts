@@ -1,12 +1,5 @@
 import type { Earning } from "@/types/database";
 
-const moneyFormatter = new Intl.NumberFormat("es-PE", {
-  style: "currency",
-  currency: "PEN",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
 export function decimalToCents(value: string | number): number {
   const [whole = "0", fraction = ""] = String(value).trim().split(".");
   const normalizedWhole = whole.replace(/^0+(?=\d)/, "") || "0";
@@ -32,5 +25,12 @@ export function earningGrossCents(
 }
 
 export function formatMoney(cents: number): string {
-  return moneyFormatter.format(cents / 100);
+  const sign = cents < 0 ? "−" : "";
+  const absolute = Math.abs(cents);
+  const whole = String(Math.floor(absolute / 100)).replace(
+    /\B(?=(\d{3})+(?!\d))/g,
+    ",",
+  );
+  const fraction = String(absolute % 100).padStart(2, "0");
+  return `${sign}S/ ${whole}.${fraction}`;
 }

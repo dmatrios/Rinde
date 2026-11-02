@@ -17,8 +17,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { ModalPopover } from "@/components/ui/modal-popover";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { ReceiptModal } from "@/features/movements/receipt-modal";
 import { useToast } from "@/components/ui/toast";
 import { initialActionState } from "@/lib/auth/types";
+import { decimalToCents, formatMoney } from "@/lib/finance/money";
 import { startShift, transitionShift } from "@/features/shifts/actions";
 import { formatShiftNotification } from "@/features/shifts/presentation";
 import type { CompletedShift, ShiftDetails } from "@/features/shifts/queries";
@@ -73,6 +75,7 @@ function CurrentShift({
   openStartOnLoad: boolean;
 }) {
   const [startOpen, setStartOpen] = useState(openStartOnLoad);
+  const [receiptOpen, setReceiptOpen] = useState(false);
   const [odometerAction, setOdometerAction] =
     useState<OdometerTransitionAction | null>(null);
   const [state, action, pending] = useActionState(
@@ -149,6 +152,12 @@ function CurrentShift({
         <p className="text-sm text-white/70">
           Iniciada {formatDateTime(current.started_at)}.
         </p>
+        <p className="mt-2 text-sm text-white/70">
+          Efectivo en caja:{" "}
+          <strong className="text-white">
+            {formatMoney(decimalToCents(current.cashBalance))}
+          </strong>
+        </p>
         {paused && lastPause && (
           <p className="mt-2 flex items-center gap-2 text-xs text-white/60">
             <Coffee size={15} /> En pausa desde{" "}
@@ -156,6 +165,9 @@ function CurrentShift({
           </p>
         )}
         <div className="mt-6 flex flex-wrap gap-3">
+          <Button type="button" size="sm" onClick={() => setReceiptOpen(true)}>
+            Registrar cobro
+          </Button>
           {current.odometer_start === null ? (
             <form action={action} aria-busy={pending}>
               <input type="hidden" name="shiftId" value={current.id} />
@@ -212,6 +224,14 @@ function CurrentShift({
             odometerStart={current.odometer_start}
           />
         )}
+        <ReceiptModal
+          key={receiptOpen ? "receipt-open" : "receipt-closed"}
+          open={receiptOpen}
+          onOpenChange={setReceiptOpen}
+          platforms={[current.platform]}
+          shiftId={current.id}
+          shiftPlatformId={current.platform_id}
+        />
       </CardContent>
     </Card>
   );
@@ -230,6 +250,7 @@ export function StartShiftModal({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [trackOdometer, setTrackOdometer] = useState(false);
   const [odometerStart, setOdometerStart] = useState("");
+  const [openingCash, setOpeningCash] = useState("");
   const pickerTriggerRef = useRef<HTMLButtonElement>(null);
   const [state, action, pending] = useActionState(
     startShift,
@@ -251,6 +272,7 @@ export function StartShiftModal({
           setPlatformId("");
           setTrackOdometer(false);
           setOdometerStart("");
+          setOpeningCash("");
         }
         onOpenChange(nextOpen);
       }}
@@ -324,6 +346,26 @@ export function StartShiftModal({
                 </div>
               </ModalPopover>
             )}
+          </div>
+          <div>
+            <label
+              htmlFor="shift-opening-cash"
+              className="mb-2 block text-xs font-semibold"
+            >
+              Efectivo al iniciar (opcional)
+            </label>
+            <NumericInput
+              id="shift-opening-cash"
+              name="openingCash"
+              value={openingCash}
+              onValueChange={setOpeningCash}
+              placeholder="0.00"
+              maxLength={15}
+              disabled={pending}
+            />
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Para saber cuánto efectivo tienes durante la jornada.
+            </p>
           </div>
           <div className="rounded-xl border border-border bg-background/55 px-3.5 py-3">
             <label className="flex cursor-pointer items-center gap-3 text-sm font-medium">

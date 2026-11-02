@@ -7,6 +7,7 @@ import type {
   Earning,
   Expense,
   FuelRefill,
+  PaymentReceipt,
   UserPlatform,
   WorkShift,
 } from "@/types/database";
@@ -127,30 +128,42 @@ export const getDashboardEarningsSummary = cache(
     const startDate = dates[0]!;
     const endDate = dates.at(-1)!;
     const endExclusive = nextDate(endDate);
-    const [earningsResult, expensesResult, fuelResult] = await Promise.all([
-      supabase
-        .from("earnings")
-        .select(
-          "date, reported_amount, tips, bonuses, tips_included, bonuses_included, orders",
-        )
-        .eq("user_id", user.id)
-        .gte("date", startDate)
-        .lte("date", endDate),
-      supabase
-        .from("expenses")
-        .select("occurred_at, amount")
-        .eq("user_id", user.id)
-        .gte("occurred_at", `${startDate}T00:00:00-05:00`)
-        .lt("occurred_at", `${endExclusive}T00:00:00-05:00`),
-      supabase
-        .from("fuel_refills")
-        .select("occurred_at, amount")
-        .eq("user_id", user.id)
-        .gte("occurred_at", `${startDate}T00:00:00-05:00`)
-        .lt("occurred_at", `${endExclusive}T00:00:00-05:00`),
-    ]);
+    const [earningsResult, expensesResult, fuelResult, receiptsResult] =
+      await Promise.all([
+        supabase
+          .from("earnings")
+          .select(
+            "date, mode, shift_id, platform_id, reported_amount, tips, bonuses, tips_included, bonuses_included, orders",
+          )
+          .eq("user_id", user.id)
+          .gte("date", startDate)
+          .lte("date", endDate),
+        supabase
+          .from("expenses")
+          .select("occurred_at, amount")
+          .eq("user_id", user.id)
+          .gte("occurred_at", `${startDate}T00:00:00-05:00`)
+          .lt("occurred_at", `${endExclusive}T00:00:00-05:00`),
+        supabase
+          .from("fuel_refills")
+          .select("occurred_at, amount")
+          .eq("user_id", user.id)
+          .gte("occurred_at", `${startDate}T00:00:00-05:00`)
+          .lt("occurred_at", `${endExclusive}T00:00:00-05:00`),
+        supabase
+          .from("payment_receipts")
+          .select("*")
+          .eq("user_id", user.id)
+          .gte("occurred_at", `${startDate}T00:00:00-05:00`)
+          .lt("occurred_at", `${endExclusive}T00:00:00-05:00`),
+      ]);
 
-    if (earningsResult.error || expensesResult.error || fuelResult.error) {
+    if (
+      earningsResult.error ||
+      expensesResult.error ||
+      fuelResult.error ||
+      receiptsResult.error
+    ) {
       throw new Error("No pudimos cargar tu avance.");
     }
 
@@ -168,6 +181,9 @@ export const getDashboardEarningsSummary = cache(
         | "tips_included"
         | "bonuses_included"
         | "orders"
+        | "mode"
+        | "shift_id"
+        | "platform_id"
       >
     >) {
       grossByDate.set(
@@ -179,6 +195,30 @@ export const getDashboardEarningsSummary = cache(
         earning.date,
         (ordersByDate.get(earning.date) ?? 0) + (earning.orders ?? 0),
       );
+    }
+    for (const receipt of receiptsResult.data as PaymentReceipt[]) {
+      const date = peruDate(new Date(receipt.occurred_at));
+      const coveredEarnings = earningsResult.data.filter(
+        (earning) =>
+          (earning.mode === "shift" &&
+            receipt.shift_id !== null &&
+            earning.shift_id === receipt.shift_id) ||
+          (earning.mode === "daily" &&
+            earning.date === date &&
+            earning.platform_id === receipt.platform_id),
+      );
+      if (coveredEarnings.length) {
+        if (coveredEarnings.every((earning) => earning.orders === null)) {
+          ordersByDate.set(date, (ordersByDate.get(date) ?? 0) + 1);
+        }
+        continue;
+      }
+      grossByDate.set(
+        date,
+        (grossByDate.get(date) ?? 0) + decimalToCents(receipt.amount),
+      );
+      countByDate.set(date, (countByDate.get(date) ?? 0) + 1);
+      ordersByDate.set(date, (ordersByDate.get(date) ?? 0) + 1);
     }
     for (const expense of expensesResult.data as Array<
       Pick<Expense, "occurred_at" | "amount">

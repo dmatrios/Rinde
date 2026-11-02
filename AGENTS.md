@@ -90,6 +90,19 @@ del usuario. El diseño de futuras tablas está en docs/data-model.md.
   `authenticated` actualizar únicamente `onboarding_completed` en su propia
   configuración. No volver a aplicarla; los cambios posteriores requieren una
   migración incremental.
+- La migración incremental
+  `supabase/migrations/20261102214913_shift_cash_movements.sql` fue aplicada
+  por el usuario el 02/11/2026, según confirmó en la conversación. Añade efectivo inicial, cobros por
+  método de pago, vinculación opcional de gastos y recargas a la jornada, saldo
+  de caja y eliminación de cuenta compatible. No volver a aplicarla. La
+  verificación remota sigue pendiente porque no hubo acceso seguro al navegador.
+- La migración incremental
+  `supabase/migrations/20261102222100_plin_payment_method.sql` fue aplicada
+  por el usuario el 02/11/2026, según confirmó en la conversación. Amplía los
+  métodos de pago con Plin para cobros, gastos y recargas. No volver a aplicarla.
+- El usuario autorizó el 02/11/2026 publicar en GitHub y producción los cambios
+  locales de sesión persistente, movimientos, Plin y Mi resumen. Esta autorización
+  corresponde a este pase, no a cambios futuros.
 - En Auth, configurar Site URL y los redirects documentados en README.md;
   habilitar email/contraseña, confirmación por correo y contraseñas de 12 o
   más caracteres.

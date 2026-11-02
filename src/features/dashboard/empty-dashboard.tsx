@@ -12,6 +12,8 @@ import { formatMoney } from "@/lib/finance/money";
 import type { DashboardEarningsSummary } from "@/features/earnings/queries";
 import type { UserPlatform } from "@/types/database";
 import { AppWelcomeTour } from "@/features/onboarding/app-welcome-tour";
+import type { QuickRegisterData } from "@/components/layout/quick-register-menu";
+import { DashboardRegisterActions } from "./dashboard-register-actions";
 import {
   ActiveShiftSummary,
   type DashboardShift,
@@ -23,6 +25,7 @@ export function EmptyDashboard({
   name,
   current = null,
   activePlatforms = [],
+  quickRegister,
   earningsSummary = {
     days: [],
     today: { count: 0, grossCents: 0 },
@@ -34,6 +37,7 @@ export function EmptyDashboard({
   name?: string;
   current?: DashboardShift | null;
   activePlatforms?: UserPlatform[];
+  quickRegister?: QuickRegisterData;
   earningsSummary?: DashboardEarningsSummary;
 }) {
   const base = preview ? "/preview" : "/app";
@@ -43,6 +47,7 @@ export function EmptyDashboard({
     timeZone: "America/Lima",
   }).format(new Date());
   const greeting = name ? `Hola, ${name.split(" ")[0]}.` : "Hola.";
+  const todayExpensesCents = earningsSummary.days.at(-1)?.expensesCents ?? 0;
 
   return (
     <div className="max-w-7xl space-y-5">
@@ -72,7 +77,11 @@ export function EmptyDashboard({
         />
       </section>
 
-      <QuickActions base={base} />
+      {quickRegister && !preview ? (
+        <DashboardRegisterActions {...quickRegister} />
+      ) : (
+        <QuickActions base={base} />
+      )}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(280px,0.82fr)_minmax(420px,1.18fr)]">
         <section
@@ -82,32 +91,32 @@ export function EmptyDashboard({
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="flex items-center gap-2 text-sm text-white/75">
-                <TrendingUp size={17} /> Balance de los últimos 7 días
+                <TrendingUp size={17} /> Ingresos de hoy
               </p>
               <p className="mt-3 tabular text-4xl font-semibold tracking-tight sm:text-5xl">
-                {earningsSummary.weekGrossCents ||
-                earningsSummary.weekExpensesCents
-                  ? formatMoney(
-                      earningsSummary.weekGrossCents -
-                        earningsSummary.weekExpensesCents,
-                    )
-                  : "—"}
+                {formatMoney(earningsSummary.today.grossCents)}
               </p>
             </div>
             <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs text-white/80">
-              {earningsSummary.today.count
-                ? `Hoy: ${formatMoney(earningsSummary.today.grossCents)}`
-                : "Sin registros hoy"}
+              Hoy
             </span>
           </div>
-          <p className="mt-3 text-xs leading-5 text-white/60">
-            {earningsSummary.today.count
-              ? `${earningsSummary.today.count} ${earningsSummary.today.count === 1 ? "registro de ingreso hoy" : "registros de ingreso hoy"}.`
-              : earningsSummary.weekExpensesCents ||
-                  earningsSummary.weekGrossCents
-                ? "Revisa tus ingresos y gastos de la semana en el gráfico."
-                : "Registra tu primer movimiento para empezar a ver tu avance."}
-          </p>
+          <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/15 pt-4 text-xs">
+            <div>
+              <p className="text-white/60">Gastos de hoy</p>
+              <p className="mt-1 tabular text-base font-semibold">
+                {formatMoney(todayExpensesCents)}
+              </p>
+            </div>
+            <div>
+              <p className="text-white/60">Después de gastos</p>
+              <p className="mt-1 tabular text-base font-semibold">
+                {formatMoney(
+                  earningsSummary.today.grossCents - todayExpensesCents,
+                )}
+              </p>
+            </div>
+          </div>
         </section>
         <WeeklyEarningsChart summary={earningsSummary} />
       </div>

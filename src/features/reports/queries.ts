@@ -17,6 +17,7 @@ import type {
   Expense,
   ExpenseCategory,
   FuelRefill,
+  PaymentReceipt,
   Profile,
   UserPlatform,
 } from "@/types/database";
@@ -53,6 +54,7 @@ export const getReportsData = cache(
       earningsResult,
       expensesResult,
       fuelResult,
+      receiptsResult,
     ] = await Promise.all([
       supabase
         .from("profiles")
@@ -79,6 +81,12 @@ export const getReportsData = cache(
         .eq("user_id", user.id)
         .gte("occurred_at", `${startDate}T00:00:00-05:00`)
         .lt("occurred_at", `${endExclusive}T00:00:00-05:00`),
+      supabase
+        .from("payment_receipts")
+        .select("*")
+        .eq("user_id", user.id)
+        .gte("occurred_at", `${startDate}T00:00:00-05:00`)
+        .lt("occurred_at", `${endExclusive}T00:00:00-05:00`),
     ]);
 
     if (
@@ -87,7 +95,8 @@ export const getReportsData = cache(
       categoriesResult.error ||
       earningsResult.error ||
       expensesResult.error ||
-      fuelResult.error
+      fuelResult.error ||
+      receiptsResult.error
     ) {
       throw new Error("No pudimos cargar tus reportes.");
     }
@@ -97,6 +106,7 @@ export const getReportsData = cache(
       earnings: earningsResult.data as Earning[],
       expenses: expensesResult.data as Expense[],
       fuel: fuelResult.data as FuelRefill[],
+      receipts: receiptsResult.data as PaymentReceipt[],
       platforms: platformsResult.data as UserPlatform[],
     };
     return {

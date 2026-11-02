@@ -10,6 +10,8 @@ export async function proxy(request: NextRequest) {
     }
     return NextResponse.next({ request });
   }
+  const persistSession =
+    request.cookies.get("rinde-session-mode")?.value !== "session";
   let response = NextResponse.next({ request });
   const supabase = createServerClient(config.url, config.key, {
     cookieOptions: {
@@ -22,9 +24,13 @@ export async function proxy(request: NextRequest) {
       setAll(items) {
         items.forEach(({ name, value }) => request.cookies.set(name, value));
         response = NextResponse.next({ request });
-        items.forEach(({ name, value, options }) =>
-          response.cookies.set(name, value, options),
-        );
+        items.forEach(({ name, value, options }) => {
+          const cookieOptions =
+            persistSession || options.maxAge === 0
+              ? options
+              : { ...options, maxAge: undefined, expires: undefined };
+          response.cookies.set(name, value, cookieOptions);
+        });
       },
     },
   });

@@ -1,6 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getAppUrl, getSupabaseConfig } from "@/lib/config";
 import { requireUser } from "@/lib/auth/session";
@@ -46,14 +47,31 @@ export async function login(
   if (!parsed.success)
     return errorState(parsed.error.issues[0]?.message ?? "Revisa tus datos.");
   try {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.signInWithPassword(parsed.data);
+    const supabase = await createClient({
+      persistSession: parsed.data.rememberSession,
+    });
+    const { error } = await supabase.auth.signInWithPassword({
+      email: parsed.data.email,
+      password: parsed.data.password,
+    });
     if (error)
       return errorState(
         error.code === "invalid_credentials"
           ? "Correo o contraseña incorrectos."
           : authError(error.code),
       );
+    const cookieStore = await cookies();
+    cookieStore.set(
+      "rinde-session-mode",
+      parsed.data.rememberSession ? "persistent" : "session",
+      {
+        httpOnly: true,
+        maxAge: parsed.data.rememberSession ? 400 * 24 * 60 * 60 : undefined,
+        path: "/",
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      },
+    );
   } catch {
     return errorState(unavailable);
   }

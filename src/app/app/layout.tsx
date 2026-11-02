@@ -25,6 +25,8 @@ export default async function ProtectedLayout({
         defaultMode: account.settings.earnings_mode,
         platforms: account.platforms.filter((platform) => platform.active),
         ruc: account.settings.ruc,
+        activeShiftId: quickRegister.activeShiftId,
+        activeShiftPlatformId: quickRegister.activeShiftPlatformId,
         shifts: quickRegister.shifts.map((shift) => ({
           ...shift,
           platformName: platformNames.get(shift.platform_id) ?? "Plataforma",

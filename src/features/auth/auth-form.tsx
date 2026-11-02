@@ -179,7 +179,16 @@ export function AuthForm({
             </Field>
           )}
           {mode === "login" && (
-            <div className="flex flex-col items-end">
+            <div className="flex flex-col items-end gap-1">
+              <label className="mr-auto flex min-h-11 cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground">
+                <input
+                  name="rememberSession"
+                  type="checkbox"
+                  defaultChecked
+                  className="size-4 rounded border-input accent-primary"
+                />
+                Mantener mi sesión iniciada
+              </label>
               <Link
                 href="/forgot-password"
                 className="inline-flex min-h-11 items-center text-xs font-medium text-primary"

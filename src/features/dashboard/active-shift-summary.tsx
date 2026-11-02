@@ -15,8 +15,11 @@ import {
   type OdometerTransitionAction,
 } from "@/features/shifts/shift-workspace";
 import type { UserPlatform } from "@/types/database";
+import { decimalToCents, formatMoney } from "@/lib/finance/money";
+import { formatLimaTime } from "@/lib/format/lima-time";
 
 export type DashboardShift = {
+  cashBalance: number;
   id: string;
   platform: { name: string };
   pauses: Array<{
@@ -169,7 +172,13 @@ function CurrentShift({
           </p>
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Empezaste a las {formatTime(current.started_at)}.
+          Empezaste a las {formatLimaTime(current.started_at)}.
+        </p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Efectivo en caja:{" "}
+          <strong className="text-foreground">
+            {formatMoney(decimalToCents(current.cashBalance))}
+          </strong>
         </p>
         <div className="mt-5 flex gap-2">
           {current.odometer_start === null ? (
@@ -299,14 +308,4 @@ function formatDuration(duration: number) {
   const minutes = totalMinutes % 60;
   const seconds = totalSeconds % 60;
   return `${hours} h ${String(minutes).padStart(2, "0")} min ${String(seconds).padStart(2, "0")} s`;
-}
-
-const timeFormatter = new Intl.DateTimeFormat("es-PE", {
-  hour: "numeric",
-  minute: "2-digit",
-  timeZone: "America/Lima",
-});
-
-function formatTime(value: string) {
-  return timeFormatter.format(new Date(value));
 }

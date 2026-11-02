@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { ShiftPause, UserPlatform, WorkShift } from "@/types/database";
 
 export type ShiftDetails = WorkShift & {
+  cashBalance: number;
   platform: UserPlatform;
   pauses: ShiftPause[];
 };
@@ -42,8 +43,12 @@ export const getShiftWorkspace = cache(async () => {
         .eq("shift_id", openShift.id)
         .order("started_at")
     : { data: [], error: null };
+  const balanceResult = openShift
+    ? await supabase.rpc("get_shift_cash_balance", { p_shift_id: openShift.id })
+    : { data: 0, error: null };
 
-  if (pausesResult.error) throw new Error("No pudimos cargar tus pausas.");
+  if (pausesResult.error || balanceResult.error)
+    throw new Error("No pudimos cargar tu jornada.");
 
   const platforms = platformsResult.data;
   const platformById = new Map(
@@ -57,7 +62,12 @@ export const getShiftWorkspace = cache(async () => {
   }
   const current: ShiftDetails | null =
     openShift && currentPlatform
-      ? { ...openShift, platform: currentPlatform, pauses: pausesResult.data }
+      ? {
+          ...openShift,
+          cashBalance: Number(balanceResult.data ?? 0),
+          platform: currentPlatform,
+          pauses: pausesResult.data,
+        }
       : null;
 
   return {

@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { BanknoteArrowUp, Fuel, Plus, ReceiptText } from "lucide-react";
 import { EarningFormModal } from "@/features/earnings/earnings-workspace";
+import { ReceiptModal } from "@/features/movements/receipt-modal";
 import type { EarningShift } from "@/features/earnings/queries";
 import {
   CategoryModal,
@@ -16,6 +17,8 @@ import type {
 } from "@/types/database";
 
 export type QuickRegisterData = {
+  activeShiftId: string | null;
+  activeShiftPlatformId: string | null;
   categories: ExpenseCategory[];
   defaultMode: EarningsMode;
   platforms: UserPlatform[];
@@ -24,6 +27,7 @@ export type QuickRegisterData = {
 };
 
 const actions = [
+  { form: "receipt", icon: BanknoteArrowUp, label: "Registrar cobro" },
   { form: "earning", icon: BanknoteArrowUp, label: "Registrar ingreso" },
   { form: "expense", icon: ReceiptText, label: "Registrar gasto" },
   { form: "fuel", icon: Fuel, label: "Registrar recarga" },
@@ -32,6 +36,8 @@ const actions = [
 type FormName = (typeof actions)[number]["form"];
 
 export function QuickRegisterMenu({
+  activeShiftId,
+  activeShiftPlatformId,
   categories,
   defaultMode,
   platforms,
@@ -130,7 +136,16 @@ export function QuickRegisterMenu({
         shifts={shifts}
         onOpenChange={(nextOpen) => setActiveForm(nextOpen ? "earning" : null)}
       />
+      <ReceiptModal
+        key={activeForm === "receipt" ? "receipt-open" : "receipt-closed"}
+        open={activeForm === "receipt"}
+        onOpenChange={(nextOpen) => setActiveForm(nextOpen ? "receipt" : null)}
+        platforms={platforms}
+        shiftId={activeShiftId}
+        shiftPlatformId={activeShiftPlatformId}
+      />
       <ExpenseFormModal
+        activeShiftId={activeShiftId}
         categories={categories}
         expense={null}
         managingCategories={managingCategories}
@@ -140,6 +155,7 @@ export function QuickRegisterMenu({
         onManageCategories={openCategoryManager}
       />
       <FuelFormModal
+        activeShiftId={activeShiftId}
         open={activeForm === "fuel"}
         refill={null}
         onOpenChange={(nextOpen) => setActiveForm(nextOpen ? "fuel" : null)}
