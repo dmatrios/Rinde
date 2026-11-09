@@ -41,6 +41,7 @@ const actions = [
 ] as const;
 
 export function DashboardRegisterActions({
+  userId,
   activeShiftId,
   activeShiftPlatformId,
   categories,
@@ -93,6 +94,7 @@ export function DashboardRegisterActions({
         ))}
       </div>
       <ReceiptModal
+        userId={userId}
         key={activeForm === "receipt" ? "receipt-open" : "receipt-closed"}
         open={activeForm === "receipt"}
         onOpenChange={(open) => setActiveForm(open ? "receipt" : null)}
@@ -101,6 +103,7 @@ export function DashboardRegisterActions({
         shiftPlatformId={activeShiftPlatformId}
       />
       <ExpenseFormModal
+        userId={userId}
         key={activeForm === "expense" ? "expense-open" : "expense-closed"}
         activeShiftId={activeShiftId}
         categories={categories}

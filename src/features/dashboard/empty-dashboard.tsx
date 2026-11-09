@@ -24,6 +24,7 @@ export function EmptyDashboard({
   preview = false,
   name,
   current = null,
+  uncountedShiftId,
   activePlatforms = [],
   quickRegister,
   earningsSummary = {
@@ -36,6 +37,7 @@ export function EmptyDashboard({
   preview?: boolean;
   name?: string;
   current?: DashboardShift | null;
+  uncountedShiftId?: string;
   activePlatforms?: UserPlatform[];
   quickRegister?: QuickRegisterData;
   earningsSummary?: DashboardEarningsSummary;
@@ -72,6 +74,7 @@ export function EmptyDashboard({
         <ActiveShiftSummary
           base={base}
           current={current}
+          uncountedShiftId={uncountedShiftId}
           activePlatforms={activePlatforms}
           referenceTime={referenceTime}
         />

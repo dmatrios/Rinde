@@ -37,6 +37,7 @@ export const getQuickRegisterData = cache(async () => {
   }
 
   return {
+    userId: user.id,
     categories: categoriesResult.data as ExpenseCategory[],
     shifts: shiftsResult.data as WorkShift[],
     activeShiftId: activeShiftResult.data?.id ?? null,

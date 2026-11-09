@@ -17,8 +17,13 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import type { ReportPeriod } from "@/features/reports/report-math";
 import { downloadReportPdf } from "@/features/reports/report-pdf";
-import { addPeriod, type ReportRange } from "@/features/reports/periods";
+import {
+  addPeriod,
+  datesForWeek,
+  type ReportRange,
+} from "@/features/reports/periods";
 import type { ReportsData } from "@/features/reports/queries";
+import { WeekProgress } from "@/features/reports/week-progress";
 import { formatMoney } from "@/lib/finance/money";
 
 const rangeLabels: Record<ReportRange, string> = {
@@ -31,14 +36,23 @@ export function ReportsView({
   anchorDate,
   day,
   initialRange,
+  initialView,
   month,
   name,
+  productivity,
+  selectedWeek,
+  selectedWeekDate,
   todayDate,
   week,
-}: ReportsData & { initialRange: ReportRange }) {
+  weeklyGoal,
+}: ReportsData & {
+  initialRange: ReportRange;
+  initialView: "week" | "details";
+}) {
   const { toast } = useToast();
   const router = useRouter();
   const [range, setRange] = useState<ReportRange>(initialRange);
+  const [view, setView] = useState(initialView);
   const [navigating, startNavigation] = useTransition();
   const [exporting, setExporting] = useState(false);
   const report = { day, week, month }[range];
@@ -49,10 +63,29 @@ export function ReportsView({
   const navigate = (nextRange: ReportRange, nextDate = anchorDate) => {
     setRange(nextRange);
     startNavigation(() => {
-      router.push(`/app/reports?range=${nextRange}&date=${nextDate}`);
+      router.push(
+        `/app/reports?view=details&range=${nextRange}&date=${nextDate}&week=${selectedWeekDate}`,
+      );
+    });
+  };
+  const navigateWeek = (nextWeekDate: string) => {
+    startNavigation(() => {
+      router.push(
+        `/app/reports?view=week&range=${range}&date=${anchorDate}&week=${nextWeekDate}`,
+      );
+    });
+  };
+  const selectView = (nextView: "week" | "details") => {
+    setView(nextView);
+    startNavigation(() => {
+      router.push(
+        `/app/reports?view=${nextView}&range=${range}&date=${anchorDate}&week=${selectedWeekDate}`,
+      );
     });
   };
   const nextDate = addPeriod(anchorDate, range, 1);
+  const nextWeekDate = addPeriod(selectedWeekDate, "week", 1);
+  const nextWeekDisabled = datesForWeek(nextWeekDate)[0]! > todayDate;
 
   const exportPdf = async () => {
     setExporting(true);
@@ -82,133 +115,179 @@ export function ReportsView({
             Filtra tu actividad y entiende cómo va tu dinero.
           </p>
         </div>
-        <div
-          aria-label="Filtrar reportes por periodo"
-          className="flex items-center gap-1 rounded-xl border border-border bg-card p-1 shadow-xs"
-        >
-          <RangeButton active={range === "day"} onClick={() => navigate("day")}>
-            Día
-          </RangeButton>
-          <RangeButton
-            active={range === "week"}
-            onClick={() => navigate("week")}
+        {view === "details" && (
+          <div
+            aria-label="Filtrar reportes por periodo"
+            className="flex items-center gap-1 rounded-xl border border-border bg-card p-1 shadow-xs"
           >
-            Semana
-          </RangeButton>
-          <RangeButton
-            active={range === "month"}
-            onClick={() => navigate("month")}
-          >
-            Mes
-          </RangeButton>
-        </div>
+            <RangeButton
+              active={range === "day"}
+              onClick={() => navigate("day")}
+            >
+              Día
+            </RangeButton>
+            <RangeButton
+              active={range === "week"}
+              onClick={() => navigate("week")}
+            >
+              Semana
+            </RangeButton>
+            <RangeButton
+              active={range === "month"}
+              onClick={() => navigate("month")}
+            >
+              Mes
+            </RangeButton>
+          </div>
+        )}
       </div>
 
-      <PeriodNavigator
-        date={anchorDate}
-        disabled={navigating}
-        nextDisabled={nextDate > todayDate}
-        range={range}
-        todayDate={todayDate}
-        onNext={() => navigate(range, nextDate)}
-        onPrevious={() => navigate(range, addPeriod(anchorDate, range, -1))}
-        onToday={() => navigate("day", todayDate)}
-        onDateSelect={(date) => navigate(range, date)}
-      />
+      <div
+        className="flex w-fit gap-1 rounded-xl border border-border bg-card p-1 shadow-xs"
+        aria-label="Vista de reportes"
+      >
+        <button
+          type="button"
+          aria-pressed={view === "week"}
+          onClick={() => selectView("week")}
+          className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${view === "week" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+        >
+          Mi semana
+        </button>
+        <button
+          type="button"
+          aria-pressed={view === "details"}
+          onClick={() => selectView("details")}
+          className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${view === "details" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+        >
+          Detalle por fecha
+        </button>
+      </div>
 
-      <section className="rounded-3xl bg-foreground px-5 py-6 text-background shadow-[0_22px_52px_-32px_rgb(32_42_58_/_0.8)] sm:px-7">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="flex items-center gap-2 text-xs text-background/65">
-              <WalletCards size={16} /> {periodLabel}
-            </p>
-            <p className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              {formatMoney(report.metrics.remainingCents)}
-            </p>
-            <p className="mt-2 max-w-md text-sm leading-6 text-background/70">
-              Lo que queda después de todos los gastos que registraste.
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="relative bg-background text-foreground hover:bg-background/90"
-            disabled={exporting}
-            onClick={exportPdf}
-          >
-            <span
-              className={exporting ? "invisible" : "flex items-center gap-2"}
-            >
-              <Download /> Generar PDF
-            </span>
-            {exporting && (
-              <LoaderCircle className="absolute animate-spin" aria-hidden />
-            )}
-            {exporting && <span className="sr-only">Preparando PDF</span>}
-          </Button>
-        </div>
-      </section>
+      {view === "week" ? (
+        <WeekProgress
+          key={selectedWeek.startDate}
+          report={selectedWeek}
+          loading={navigating}
+          nextDisabled={nextWeekDisabled}
+          onPrevious={() =>
+            navigateWeek(addPeriod(selectedWeekDate, "week", -1))
+          }
+          onNext={() => navigateWeek(nextWeekDate)}
+          weeklyGoal={weeklyGoal}
+          productivity={productivity}
+        />
+      ) : (
+        <>
+          <PeriodNavigator
+            date={anchorDate}
+            disabled={navigating}
+            nextDisabled={nextDate > todayDate}
+            range={range}
+            todayDate={todayDate}
+            onNext={() => navigate(range, nextDate)}
+            onPrevious={() => navigate(range, addPeriod(anchorDate, range, -1))}
+            onToday={() => navigate("day", todayDate)}
+            onDateSelect={(date) => navigate(range, date)}
+          />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric
-          label="Ingresos"
-          value={formatMoney(report.metrics.grossCents)}
-          tone="income"
-        />
-        <Metric
-          label="Resultado operativo"
-          value={formatMoney(report.metrics.resultCents)}
-          tone="result"
-        />
-        <Metric
-          label="Gastos operativos"
-          value={formatMoney(report.metrics.operationalCents)}
-        />
-        <Metric
-          label="Gastos personales"
-          value={formatMoney(report.metrics.personalCents)}
-        />
-      </section>
-
-      {hasData ? (
-        <section className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,.75fr)]">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6">
-            <div className="flex items-start justify-between gap-4">
+          <section className="rounded-3xl bg-foreground px-5 py-6 text-background shadow-[0_22px_52px_-32px_rgb(32_42_58_/_0.8)] sm:px-7">
+            <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h2 className="flex items-center gap-2 font-semibold">
-                  <BarChart3 size={18} /> Ingresos y gastos
-                </h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Toca una barra para ver el detalle del día.
+                <p className="flex items-center gap-2 text-xs text-background/65">
+                  <WalletCards size={16} /> {periodLabel}
+                </p>
+                <p className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+                  {formatMoney(report.metrics.remainingCents)}
+                </p>
+                <p className="mt-2 max-w-md text-sm leading-6 text-background/70">
+                  Lo que queda después de todos los gastos que registraste.
                 </p>
               </div>
-              <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-secondary-foreground">
-                PEN
-              </span>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="relative bg-background text-foreground hover:bg-background/90"
+                disabled={exporting}
+                onClick={exportPdf}
+              >
+                <span
+                  className={
+                    exporting ? "invisible" : "flex items-center gap-2"
+                  }
+                >
+                  <Download /> Generar PDF
+                </span>
+                {exporting && (
+                  <LoaderCircle className="absolute animate-spin" aria-hidden />
+                )}
+                {exporting && <span className="sr-only">Preparando PDF</span>}
+              </Button>
             </div>
-            <DailyChart key={`${range}-${anchorDate}`} report={report} />
-          </div>
-          <ExpenseChart report={report} />
-        </section>
-      ) : (
-        <section className="rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6">
-          <EmptyReport />
-        </section>
-      )}
+          </section>
 
-      <section className="grid gap-5 lg:grid-cols-2">
-        <Breakdown
-          title="Ingresos por plataforma"
-          entries={report.platformBreakdown}
-          empty="Aún no hay ingresos para comparar."
-        />
-        <Breakdown
-          title="Gastos registrados"
-          entries={report.categoryBreakdown}
-          empty="Aún no hay gastos registrados en este periodo."
-        />
-      </section>
+          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <Metric
+              label="Ingresos"
+              value={formatMoney(report.metrics.grossCents)}
+              tone="income"
+            />
+            <Metric
+              label="Resultado operativo"
+              value={formatMoney(report.metrics.resultCents)}
+              tone="result"
+            />
+            <Metric
+              label="Gastos operativos"
+              value={formatMoney(report.metrics.operationalCents)}
+            />
+            <Metric
+              label="Gastos personales"
+              value={formatMoney(report.metrics.personalCents)}
+            />
+          </section>
+
+          {hasData ? (
+            <section className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,.75fr)]">
+              <div className="rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="flex items-center gap-2 font-semibold">
+                      <BarChart3 size={18} /> Ingresos y gastos
+                    </h2>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Toca una barra para ver el detalle del día.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-secondary-foreground">
+                    PEN
+                  </span>
+                </div>
+                <DailyChart key={`${range}-${anchorDate}`} report={report} />
+              </div>
+              <ExpenseChart report={report} />
+            </section>
+          ) : (
+            <section className="rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6">
+              <EmptyReport />
+            </section>
+          )}
+
+          <section className="grid gap-5 lg:grid-cols-2">
+            <Breakdown
+              title="Ingresos por plataforma"
+              entries={report.platformBreakdown}
+              empty="Aún no hay ingresos para comparar."
+            />
+            <Breakdown
+              title="Gastos registrados"
+              entries={report.categoryBreakdown}
+              empty="Aún no hay gastos registrados en este periodo."
+            />
+          </section>
+        </>
+      )}
     </div>
   );
 }

@@ -17,10 +17,18 @@ export default async function SectionPage({
     const query = await searchParams;
     const requestedRange = first(query.range);
     const range = isReportRange(requestedRange) ? requestedRange : "week";
+    const requestedView = first(query.view);
+    const initialView =
+      requestedView === "week" ||
+      (requestedView !== "details" && !requestedRange && !first(query.date))
+        ? "week"
+        : "details";
     return (
       <ReportsView
-        {...await getReportsData(first(query.date))}
+        key={`${first(query.view) ?? "default"}-${first(query.range) ?? ""}-${first(query.date) ?? ""}-${first(query.week) ?? ""}`}
+        {...await getReportsData(first(query.date), first(query.week))}
         initialRange={range}
+        initialView={initialView}
       />
     );
   }

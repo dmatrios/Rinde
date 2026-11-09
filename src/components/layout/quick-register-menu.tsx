@@ -17,6 +17,7 @@ import type {
 } from "@/types/database";
 
 export type QuickRegisterData = {
+  userId: string;
   activeShiftId: string | null;
   activeShiftPlatformId: string | null;
   categories: ExpenseCategory[];
@@ -36,6 +37,7 @@ const actions = [
 type FormName = (typeof actions)[number]["form"];
 
 export function QuickRegisterMenu({
+  userId,
   activeShiftId,
   activeShiftPlatformId,
   categories,
@@ -137,6 +139,7 @@ export function QuickRegisterMenu({
         onOpenChange={(nextOpen) => setActiveForm(nextOpen ? "earning" : null)}
       />
       <ReceiptModal
+        userId={userId}
         key={activeForm === "receipt" ? "receipt-open" : "receipt-closed"}
         open={activeForm === "receipt"}
         onOpenChange={(nextOpen) => setActiveForm(nextOpen ? "receipt" : null)}
@@ -145,6 +148,7 @@ export function QuickRegisterMenu({
         shiftPlatformId={activeShiftPlatformId}
       />
       <ExpenseFormModal
+        userId={userId}
         activeShiftId={activeShiftId}
         categories={categories}
         expense={null}

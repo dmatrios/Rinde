@@ -10,16 +10,23 @@ import { NumericInput } from "@/components/ui/numeric-input";
 import { useToast } from "@/components/ui/toast";
 import { initialActionState } from "@/lib/auth/types";
 import { decimalToCents, formatMoney } from "@/lib/finance/money";
+import {
+  clearLocalDraft,
+  readLocalDraft,
+  updateLocalDraft,
+} from "@/lib/drafts/local-draft";
 import { savePaymentReceipt } from "./actions";
 import type { PaymentMethod, UserPlatform } from "@/types/database";
 
 export function ReceiptModal({
+  userId,
   open,
   onOpenChange,
   platforms,
   shiftId = null,
   shiftPlatformId = null,
 }: {
+  userId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   platforms: UserPlatform[];
@@ -31,6 +38,8 @@ export function ReceiptModal({
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [amount, setAmount] = useState("");
   const [received, setReceived] = useState("");
+  const [description, setDescription] = useState("");
+  const draftKey = `receipt-${shiftId ?? "general"}`;
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [state, action, pending] = useActionState(
     savePaymentReceipt,
@@ -43,8 +52,29 @@ export function ReceiptModal({
     if (!state.message || state === lastState.current) return;
     lastState.current = state;
     toast(state.message, state.status === "error" ? "error" : "success");
-    if (state.status === "success") onOpenChange(false);
-  }, [state, toast, onOpenChange]);
+    if (state.status === "success") {
+      clearLocalDraft(userId, draftKey);
+      onOpenChange(false);
+    }
+  }, [state, toast, onOpenChange, userId, draftKey]);
+
+  useEffect(() => {
+    if (!open) return;
+    const draft = readLocalDraft(userId, draftKey);
+    if (!draft) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (!shiftPlatformId && draft.platformId) setPlatformId(draft.platformId);
+      if (
+        draft.method &&
+        ["cash", "yape", "plin", "card"].includes(draft.method)
+      )
+        setMethod(draft.method as PaymentMethod);
+      setAmount(draft.amount ?? "");
+      setReceived(draft.received ?? "");
+      setDescription(draft.description ?? "");
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, userId, draftKey, shiftPlatformId]);
 
   const change =
     method === "cash" && amount && received
@@ -99,6 +129,9 @@ export function ReceiptModal({
                     aria-selected={platform.id === platformId}
                     onClick={() => {
                       setPlatformId(platform.id);
+                      updateLocalDraft(userId, draftKey, {
+                        platformId: platform.id,
+                      });
                       setPickerOpen(false);
                     }}
                     className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm hover:bg-muted"
@@ -122,7 +155,10 @@ export function ReceiptModal({
             id="receipt-amount"
             name="amount"
             value={amount}
-            onValueChange={setAmount}
+            onValueChange={(value) => {
+              setAmount(value);
+              updateLocalDraft(userId, draftKey, { amount: value });
+            }}
             placeholder="0.00"
             maxLength={15}
             required
@@ -146,7 +182,10 @@ export function ReceiptModal({
                   name="paymentMethod"
                   value={value}
                   checked={method === value}
-                  onChange={() => setMethod(value)}
+                  onChange={() => {
+                    setMethod(value);
+                    updateLocalDraft(userId, draftKey, { method: value });
+                  }}
                   className="peer sr-only"
                   disabled={pending}
                 />
@@ -169,7 +208,10 @@ export function ReceiptModal({
               id="receipt-cash"
               name="cashReceived"
               value={received}
-              onValueChange={setReceived}
+              onValueChange={(value) => {
+                setReceived(value);
+                updateLocalDraft(userId, draftKey, { received: value });
+              }}
               placeholder="0.00"
               maxLength={15}
               required
@@ -192,6 +234,13 @@ export function ReceiptModal({
           <Input
             id="receipt-description"
             name="description"
+            value={description}
+            onChange={(event) => {
+              setDescription(event.target.value);
+              updateLocalDraft(userId, draftKey, {
+                description: event.target.value,
+              });
+            }}
             placeholder="Por ejemplo, pedido 123"
             maxLength={120}
             disabled={pending}
@@ -200,6 +249,9 @@ export function ReceiptModal({
         <p className="text-xs leading-5 text-muted-foreground">
           Si luego registras el total que muestra la plataforma, estos cobros no
           se sumarán dos veces.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Este borrador se conserva en tu dispositivo si pierdes conexión.
         </p>
         <div className="flex justify-end gap-2 pt-1">
           <Button

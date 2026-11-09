@@ -30,8 +30,14 @@ export default async function DashboardPage({
       <EmptyDashboard
         name={account.profile.display_name}
         current={workspace.current}
+        uncountedShiftId={
+          workspace.history[0]?.cash_counted == null
+            ? workspace.history[0]?.id
+            : undefined
+        }
         activePlatforms={workspace.activePlatforms}
         quickRegister={{
+          userId: quickRegister.userId,
           activeShiftId: quickRegister.activeShiftId,
           activeShiftPlatformId: quickRegister.activeShiftPlatformId,
           categories: quickRegister.categories,

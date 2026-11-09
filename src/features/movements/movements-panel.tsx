@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { formatMoney } from "@/lib/finance/money";
 import type { Movement } from "./queries";
 
@@ -69,6 +70,15 @@ export function MovementsPanel({ movements }: { movements: Movement[] }) {
                     <p className="mt-1">
                       Incluido en el ingreso total registrado.
                     </p>
+                  )}
+                  {(movement.kind === "expense" ||
+                    movement.kind === "fuel") && (
+                    <Link
+                      href={`/app/expenses?${movement.kind === "expense" ? "edit" : "editFuel"}=${movement.id}`}
+                      className="mt-2 inline-block font-semibold text-primary hover:underline"
+                    >
+                      Editar registro
+                    </Link>
                   )}
                 </div>
               </details>

@@ -55,15 +55,13 @@ async function openShiftId(
   return data.id;
 }
 
-async function existingShift(
+async function existingMovement(
   supabase: Awaited<ReturnType<typeof createClient>>,
   table: "expenses" | "fuel_refills",
   userId: string,
   id: string | undefined,
-  canChooseShift: boolean,
-  date: string,
 ) {
-  if (!id || canChooseShift) return null;
+  if (!id) return null;
   const { data, error } = await supabase
     .from(table)
     .select("shift_id, occurred_at")
@@ -71,19 +69,16 @@ async function existingShift(
     .eq("id", id)
     .maybeSingle();
   if (error || !data) throw new Error("No encontramos ese movimiento.");
-  if (data.shift_id) {
-    const originalDate = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/Lima",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date(data.occurred_at));
-    if (date !== originalDate)
-      throw new Error(
-        "No puedes cambiar la fecha de un gasto vinculado a una jornada.",
-      );
-  }
   return data;
+}
+
+function originalShiftDate(occurredAt: string) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Lima",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(occurredAt));
 }
 
 export async function saveCategory(
@@ -199,23 +194,27 @@ export async function saveExpense(
   let shiftId: string | null;
   let preservedOccurredAt: string | null = null;
   try {
-    const previous = await existingShift(
+    const previous = await existingMovement(
       supabase,
       "expenses",
       user.id,
       parsed.data.id,
-      form.get("canChooseShift") === "true",
-      parsed.data.date,
     );
-    preservedOccurredAt = previous?.shift_id ? previous.occurred_at : null;
-    shiftId =
-      previous?.shift_id ??
-      (await openShiftId(
+    if (previous?.shift_id && parsed.data.includeShift) {
+      if (parsed.data.date !== originalShiftDate(previous.occurred_at))
+        throw new Error(
+          "Para cambiar la fecha, marca este gasto como fuera de jornada.",
+        );
+      shiftId = previous.shift_id;
+      preservedOccurredAt = previous.occurred_at;
+    } else {
+      shiftId = await openShiftId(
         supabase,
         user.id,
         parsed.data.date,
         parsed.data.includeShift,
-      ));
+      );
+    }
   } catch (error) {
     return failure(error instanceof Error ? error.message : unavailable);
   }
@@ -273,23 +272,27 @@ export async function saveFuelRefill(
   let shiftId: string | null;
   let preservedOccurredAt: string | null = null;
   try {
-    const previous = await existingShift(
+    const previous = await existingMovement(
       supabase,
       "fuel_refills",
       user.id,
       parsed.data.id,
-      form.get("canChooseShift") === "true",
-      parsed.data.date,
     );
-    preservedOccurredAt = previous?.shift_id ? previous.occurred_at : null;
-    shiftId =
-      previous?.shift_id ??
-      (await openShiftId(
+    if (previous?.shift_id && parsed.data.includeShift) {
+      if (parsed.data.date !== originalShiftDate(previous.occurred_at))
+        throw new Error(
+          "Para cambiar la fecha, marca esta recarga como fuera de jornada.",
+        );
+      shiftId = previous.shift_id;
+      preservedOccurredAt = previous.occurred_at;
+    } else {
+      shiftId = await openShiftId(
         supabase,
         user.id,
         parsed.data.date,
         parsed.data.includeShift,
-      ));
+      );
+    }
   } catch (error) {
     return failure(error instanceof Error ? error.message : unavailable);
   }
@@ -339,16 +342,14 @@ export async function saveRecurringExpense(
       parsed.error.issues[0]?.message ?? "Revisa el gasto frecuente.",
     );
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("recurring_expenses")
-    .insert({
-      user_id: user.id,
-      category_id: parsed.data.categoryId,
-      description: parsed.data.description,
-      amount: parsed.data.amount,
-      cadence: parsed.data.cadence,
-      anchor_date: parsed.data.anchorDate,
-    });
+  const { error } = await supabase.from("recurring_expenses").insert({
+    user_id: user.id,
+    category_id: parsed.data.categoryId,
+    description: parsed.data.description,
+    amount: parsed.data.amount,
+    cadence: parsed.data.cadence,
+    anchor_date: parsed.data.anchorDate,
+  });
   if (error) return failure(unavailable);
   refresh();
   return success("Gasto frecuente guardado.");

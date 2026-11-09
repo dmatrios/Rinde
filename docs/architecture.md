@@ -2,7 +2,7 @@
 
 ## Alcance entregado
 
-Iteración 5: Next.js nativo, autenticación, perfil, plataformas, jornadas,
+Iteración 6: Next.js nativo, autenticación, perfil, plataformas, jornadas,
 ingresos, categorías, gastos frecuentes, combustible y reportes. Los datos se
 guardan con RLS, restricciones de propiedad y un historial atómico de ediciones
 de ingresos. Los reportes consultan los registros propios del día, semana o mes
@@ -13,9 +13,22 @@ inicial y pagos dentro o fuera de la jornada. Los cobros aparecen en reportes;
 cuando existe un ingreso total del mismo ámbito, ese total los cubre y evita
 sumarlos dos veces. El saldo de caja se calcula en PostgreSQL a partir del
 efectivo inicial, cobros en efectivo y gastos en efectivo vinculados a la jornada.
+`/app/activity/[id]` consulta únicamente la jornada del usuario autenticado y
+sus movimientos vinculados. La corrección de horas requiere confirmación,
+mantiene las fechas originales y valida que las pausas sigan dentro del nuevo
+intervalo. Los gastos y recargas del detalle enlazan a sus formularios de edición.
+La vista «Mi semana» de reportes permite recorrer semanas completas; la semana
+vigente se limita a hoy. Usa los mismos datos y reglas de importes que los
+reportes por fecha, y conserva su selección de fecha por separado.
+El arqueo de cierre guarda el efectivo contado en la jornada finalizada y
+compara ese valor con el saldo calculado, sin alterar cobros ni gastos. Una meta
+semanal opcional pertenece a la cuenta. Los indicadores operativos por hora y
+kilómetro usan jornadas finalizadas con ingresos vinculados; el cálculo por km
+requiere lecturas completas y descuenta los tramos de pausa.
+Los formularios nuevos de cobro y gasto conservan borradores locales por cuenta
+y los eliminan al guardar o cerrar sesión. El borrador no se envía automáticamente.
 La migración `20261102214913_shift_cash_movements.sql` fue aplicada por el
-usuario el 02/11/2026; queda pendiente verificar el flujo con una sesión real
-antes de publicar este código.
+usuario el 02/11/2026; queda pendiente verificar el flujo con una sesión real.
 La migración `20261102222100_plin_payment_method.sql` también fue aplicada
 por el usuario el 02/11/2026 y permite Plin como método de pago independiente.
 La vista pública `/preview` no
@@ -79,8 +92,8 @@ la migración y RLS sin requerir Docker. ESLint y sus reglas de Next verifican e
 código. Prettier mantiene un formato de código consistente. ESLint 9 conserva la
 compatibilidad declarada por los plugins del preset oficial de Next instalado.
 Los gráficos de reportes se componen con elementos de interfaz accesibles y CSS,
-manteniendo baja la carga inicial. La PWA, metas y borradores corresponden a
-etapas futuras.
+manteniendo baja la carga inicial. La instalación PWA y la sincronización de
+registros sin conexión corresponden a etapas futuras.
 
 Se utiliza Webpack mediante la opción oficial de Next para desarrollo y build,
 incluyendo Windows. El lockfile fija la resolución exacta. No hay scripts que
@@ -88,7 +101,7 @@ envíen datos del usuario a servicios externos adicionales.
 
 ## Próximas etapas (sin implementación automática)
 
-6. Metas, PWA, borradores y sincronización pendiente, rendimiento y QA integral.
+7. PWA, sincronización automática sin conexión, rendimiento y QA integral.
 
 ## Fuentes oficiales consultadas el 22/10/2026
 

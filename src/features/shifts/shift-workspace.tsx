@@ -1,6 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Check,
   ChevronDown,
@@ -27,11 +29,13 @@ import type { CompletedShift, ShiftDetails } from "@/features/shifts/queries";
 import type { UserPlatform } from "@/types/database";
 
 export function ShiftWorkspace({
+  userId,
   activePlatforms,
   current,
   history,
   openStartOnLoad = false,
 }: {
+  userId: string;
   activePlatforms: UserPlatform[];
   current: ShiftDetails | null;
   history: CompletedShift[];
@@ -41,6 +45,7 @@ export function ShiftWorkspace({
     <div className="grid max-w-4xl gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
       <div className="space-y-5">
         <CurrentShift
+          userId={userId}
           activePlatforms={activePlatforms}
           current={current}
           openStartOnLoad={openStartOnLoad}
@@ -66,16 +71,21 @@ export function ShiftWorkspace({
 }
 
 function CurrentShift({
+  userId,
   activePlatforms,
   current,
   openStartOnLoad,
 }: {
+  userId: string;
   activePlatforms: UserPlatform[];
   current: ShiftDetails | null;
   openStartOnLoad: boolean;
 }) {
   const [startOpen, setStartOpen] = useState(openStartOnLoad);
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [lastAction, setLastAction] = useState<
+    "pause" | "resume" | "finish" | null
+  >(null);
   const [odometerAction, setOdometerAction] =
     useState<OdometerTransitionAction | null>(null);
   const [state, action, pending] = useActionState(
@@ -83,6 +93,7 @@ function CurrentShift({
     initialActionState,
   );
   const { toast } = useToast();
+  const router = useRouter();
   const lastState = useRef(initialActionState);
 
   useEffect(() => {
@@ -92,7 +103,9 @@ function CurrentShift({
       formatShiftNotification(state.message),
       state.status === "error" ? "error" : "success",
     );
-  }, [state, toast]);
+    if (state.status === "success" && lastAction === "finish" && current)
+      router.push(`/app/activity/${current.id}?cash=1`);
+  }, [state, toast, lastAction, current, router]);
 
   if (!current) {
     return (
@@ -152,6 +165,12 @@ function CurrentShift({
         <p className="text-sm text-white/70">
           Iniciada {formatDateTime(current.started_at)}.
         </p>
+        <Link
+          href={`/app/activity/${current.id}`}
+          className="mt-2 inline-block text-xs font-semibold text-white underline underline-offset-4"
+        >
+          Ver detalle de jornada
+        </Link>
         <p className="mt-2 text-sm text-white/70">
           Efectivo en caja:{" "}
           <strong className="text-white">
@@ -169,7 +188,11 @@ function CurrentShift({
             Registrar cobro
           </Button>
           {current.odometer_start === null ? (
-            <form action={action} aria-busy={pending}>
+            <form
+              action={action}
+              aria-busy={pending}
+              onSubmit={() => setLastAction(transitionAction)}
+            >
               <input type="hidden" name="shiftId" value={current.id} />
               <input type="hidden" name="action" value={transitionAction} />
               <input type="hidden" name="odometerEnd" value="" />
@@ -199,7 +222,11 @@ function CurrentShift({
               Finalizar
             </Button>
           ) : (
-            <form action={action} aria-busy={pending}>
+            <form
+              action={action}
+              aria-busy={pending}
+              onSubmit={() => setLastAction("finish")}
+            >
               <input type="hidden" name="shiftId" value={current.id} />
               <input type="hidden" name="action" value="finish" />
               <input type="hidden" name="odometerEnd" value="" />
@@ -225,6 +252,7 @@ function CurrentShift({
           />
         )}
         <ReceiptModal
+          userId={userId}
           key={receiptOpen ? "receipt-open" : "receipt-closed"}
           open={receiptOpen}
           onOpenChange={setReceiptOpen}
@@ -496,13 +524,18 @@ export function OdometerTransitionModal({
   );
   const [odometerEnd, setOdometerEnd] = useState("");
   const { toast } = useToast();
+  const router = useRouter();
   const lastState = useRef(initialActionState);
   useEffect(() => {
     if (!state.message || state === lastState.current) return;
     lastState.current = state;
     toast(state.message, state.status === "error" ? "error" : "success");
-    if (state.status === "success") onOpenChange(false);
-  }, [onOpenChange, state, toast]);
+    if (state.status === "success") {
+      onOpenChange(false);
+      if (actionName === "finish")
+        router.push(`/app/activity/${shiftId}?cash=1`);
+    }
+  }, [onOpenChange, state, toast, actionName, router, shiftId]);
   const copy = transitionCopy(actionName);
   return (
     <Modal
@@ -614,9 +647,9 @@ function ShiftHistory({ history }: { history: CompletedShift[] }) {
                     {formatTime(shift.ended_at)}
                   </p>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  Finalizada
-                </span>
+                <Button asChild variant="ghost" size="sm">
+                  <Link href={`/app/activity/${shift.id}`}>Ver detalle</Link>
+                </Button>
               </li>
             ))}
           </ul>

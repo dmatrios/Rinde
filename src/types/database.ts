@@ -49,6 +49,8 @@ export type WorkShift = {
   odometer_start: number | null;
   odometer_end: number | null;
   opening_cash: number;
+  cash_counted: number | null;
+  cash_counted_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -156,6 +158,12 @@ export type PaymentReceipt = {
   description: string | null;
   created_at: string;
 };
+export type Goal = {
+  user_id: string;
+  weekly_income: number;
+  created_at: string;
+  updated_at: string;
+};
 type Table<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -208,13 +216,18 @@ export type Database = {
           odometer_start?: number | null;
           odometer_end?: number | null;
           opening_cash?: number;
+          cash_counted?: string | null;
+          cash_counted_at?: string | null;
         },
         {
+          started_at?: string;
           ended_at?: string | null;
           status?: WorkShiftStatus;
           odometer_start?: number | null;
           odometer_end?: number | null;
           opening_cash?: number;
+          cash_counted?: string | null;
+          cash_counted_at?: string | null;
         }
       >;
       shift_pauses: Table<
@@ -344,6 +357,11 @@ export type Database = {
           cash_received?: string | null;
           description?: string | null;
         }
+      >;
+      goals: Table<
+        Goal,
+        { user_id: string; weekly_income: string },
+        { weekly_income?: string }
       >;
     };
     Views: { [_ in never]: never };

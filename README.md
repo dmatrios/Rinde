@@ -1,6 +1,6 @@
 # Rinde
 
-Control personal de horas, ingresos y gastos de delivery. **Entrega: iteración 5**.
+Control personal de horas, ingresos y gastos de delivery. **Entrega: iteración 6**.
 Nombre provisional. Sin datos personales precargados ni credenciales incluidas.
 
 ## Qué está implementado
@@ -13,7 +13,8 @@ Nombre provisional. Sin datos personales precargados ni credenciales incluidas.
 - Migraciones transaccionales con cuentas, plataformas, jornadas y pausas;
   restricciones, privilegios y RLS por propietario.
 - Gestión de plataformas e inicio, pausa, reanudación, finalización e historial
-  reciente de jornadas con marcas de tiempo del servidor.
+  reciente de jornadas con marcas de tiempo del servidor. Cada jornada tiene un
+  detalle de horarios, pausas y movimientos, con corrección de horas confirmada.
 - Registro y edición de ingresos por día o jornada, con importes decimales,
   bloqueo de duplicados y un historial de cambios por registro.
 - Categorías operativas o personales, gastos editables, gastos frecuentes que se
@@ -21,16 +22,22 @@ Nombre provisional. Sin datos personales precargados ni credenciales incluidas.
   importes.
 - Efectivo inicial opcional por jornada, cobros en efectivo, Yape, Plin o tarjeta,
   vuelto calculado, gastos y recargas con método de pago dentro o fuera de la
-  jornada, saldo de caja e historial detallado de movimientos.
+  jornada, saldo de caja, arqueo de cierre e historial detallado de movimientos.
 - Reportes navegables por día, semana o mes, con desglose por plataforma y
   gasto, pedidos registrados, detalle en las gráficas y descarga local de un
-  PDF con el mismo resumen.
+  PDF con el mismo resumen. La vista «Mi semana» permite recorrer semanas con
+  flechas, compara ingresos y gastos, muestra una meta opcional y calcula el
+  resultado operativo por hora o kilómetro cuando hay datos suficientes.
+- Borradores locales de cobros y gastos nuevos, separados por cuenta y con
+  vencimiento de siete días. Se envían sólo cuando la persona pulsa Guardar con
+  conexión disponible.
 - Sidebar desktop, navegación inferior móvil, estados vacíos y vista previa.
 - Pruebas de validación y PostgreSQL/RLS con dos usuarios de prueba aislados.
 
-Los módulos restantes están identificados como próximas etapas. Los gráficos de
+Los gráficos de
 la aplicación se renderizan con componentes propios, sin introducir una librería
-de visualización adicional. PWA y borradores corresponden a una etapa posterior.
+de visualización adicional. La instalación como PWA y la sincronización automática
+de datos sin conexión corresponden a una etapa posterior.
 
 ## 1. Requisitos
 
@@ -109,9 +116,13 @@ orden:
 
 `supabase/migrations/20261102222100_plin_payment_method.sql`
 
+`supabase/migrations/20261109203917_weekly_goals_cash_reconciliation.sql`
+
 Las migraciones de movimientos y Plin fueron aplicadas al proyecto Rinde por el
 usuario el 02/11/2026. No las ejecutes otra vez. Verifica el flujo con una sesión
 de la aplicación después de publicarlo.
+La última migración, de meta semanal y arqueo, aún debe aplicarse una sola vez
+antes de usar esas funciones en producción. Las anteriores no deben repetirse.
 
 La migración está envuelta en una transacción. Si falla, corrige el error antes de
 reintentar; no ejecutes sólo fragmentos. No contiene datos reales ni borra tablas

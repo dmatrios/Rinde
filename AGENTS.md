@@ -1,7 +1,7 @@
 # Rinde
 
 Proyecto Next.js nativo. Leer README.md y docs/architecture.md antes de editar.
-La iteración vigente es la 5; no implementar otras iteraciones sin instrucción
+La iteración vigente es la 6; no implementar otras iteraciones sin instrucción
 del usuario. El diseño de futuras tablas está en docs/data-model.md.
 
 - Consultar las guías relevantes de la versión instalada en
@@ -100,6 +100,14 @@ del usuario. El diseño de futuras tablas está en docs/data-model.md.
   `supabase/migrations/20261102222100_plin_payment_method.sql` fue aplicada
   por el usuario el 02/11/2026, según confirmó en la conversación. Amplía los
   métodos de pago con Plin para cobros, gastos y recargas. No volver a aplicarla.
+- La migración incremental
+  `supabase/migrations/20261109203917_weekly_goals_cash_reconciliation.sql`
+  añade el efectivo contado al cierre y la meta semanal con RLS y permisos
+  explícitos. Pendiente de aplicar al proyecto remoto; no afirmar que está
+  aplicada hasta verificarla. Las funciones nuevas dependen de ella.
+- El usuario autorizó el 09/11/2026 terminar las mejoras de arqueo, indicadores,
+  meta y borradores y después subir estos cambios a GitHub. Esta autorización
+  corresponde a este pase.
 - El usuario autorizó el 02/11/2026 publicar en GitHub y producción los cambios
   locales de sesión persistente, movimientos, Plin y Mi resumen. Esta autorización
   corresponde a este pase, no a cambios futuros.

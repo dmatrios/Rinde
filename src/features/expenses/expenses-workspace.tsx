@@ -44,6 +44,12 @@ import type {
 } from "@/features/expenses/queries";
 import { initialActionState } from "@/lib/auth/types";
 import { decimalToCents, formatMoney } from "@/lib/finance/money";
+import {
+  clearLocalDraft,
+  readLocalDraft,
+  updateLocalDraft,
+  type LocalDraft,
+} from "@/lib/drafts/local-draft";
 import type {
   ExpenseCategory,
   FuelRefill,
@@ -54,9 +60,12 @@ const paymentLabel = (method: PaymentMethod) =>
   ({ cash: "Efectivo", yape: "Yape", plin: "Plin", card: "Tarjeta" })[method];
 
 type WorkspaceProps = {
+  userId: string;
   activeShiftId: string | null;
   categories: ExpenseCategory[];
   expenses: ExpenseRecord[];
+  editExpenseId?: string;
+  editFuelId?: string;
   fuel: FuelRefill[];
   manageCategories?: boolean;
   quickAction?: "expense" | "fuel";
@@ -65,9 +74,12 @@ type WorkspaceProps = {
 };
 
 export function ExpensesWorkspace({
+  userId,
   activeShiftId,
   categories,
   expenses,
+  editExpenseId,
+  editFuelId,
   fuel,
   manageCategories = false,
   quickAction,
@@ -75,15 +87,20 @@ export function ExpensesWorkspace({
   ruc,
 }: WorkspaceProps) {
   const [expenseModalOpen, setExpenseModalOpen] = useState(
-    quickAction === "expense",
+    quickAction === "expense" ||
+      expenses.some((expense) => expense.id === editExpenseId),
   );
-  const [fuelModalOpen, setFuelModalOpen] = useState(quickAction === "fuel");
+  const [fuelModalOpen, setFuelModalOpen] = useState(
+    quickAction === "fuel" || fuel.some((refill) => refill.id === editFuelId),
+  );
   const [categoryModalOpen, setCategoryModalOpen] = useState(manageCategories);
   const [recurringModalOpen, setRecurringModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<ExpenseRecord | null>(
-    null,
+    expenses.find((expense) => expense.id === editExpenseId) ?? null,
   );
-  const [editingFuel, setEditingFuel] = useState<FuelRefill | null>(null);
+  const [editingFuel, setEditingFuel] = useState<FuelRefill | null>(
+    fuel.find((refill) => refill.id === editFuelId) ?? null,
+  );
   const [managingCategoriesFrom, setManagingCategoriesFrom] = useState<
     "expense" | "recurring" | null
   >(null);
@@ -195,7 +212,9 @@ export function ExpensesWorkspace({
                         {expense.payment_method
                           ? ` · ${paymentLabel(expense.payment_method)}`
                           : ""}
-                        {expense.shift_id ? " · En jornada" : ""}
+                        {expense.shift_id
+                          ? " · En jornada"
+                          : " · Fuera de jornada"}
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -311,7 +330,9 @@ export function ExpensesWorkspace({
                           {refill.payment_method
                             ? ` · ${paymentLabel(refill.payment_method)}`
                             : ""}
-                          {refill.shift_id ? " · En jornada" : ""}
+                          {refill.shift_id
+                            ? " · En jornada"
+                            : " · Fuera de jornada"}
                         </p>
                       </div>
                       <Button
@@ -344,6 +365,7 @@ export function ExpensesWorkspace({
       </div>
 
       <ExpenseFormModal
+        userId={userId}
         activeShiftId={activeShiftId}
         key={`expense-${editingExpense?.id ?? "new"}-${expenseModalOpen}`}
         categories={categories}
@@ -503,6 +525,7 @@ function RecurringItem({ rule }: { rule: RecurringRecord }) {
 }
 
 export function ExpenseFormModal({
+  userId,
   activeShiftId = null,
   categories,
   expense,
@@ -512,6 +535,7 @@ export function ExpenseFormModal({
   open,
   ruc,
 }: {
+  userId: string;
   activeShiftId?: string | null;
   categories: ExpenseCategory[];
   expense: ExpenseRecord | null;
@@ -526,6 +550,9 @@ export function ExpenseFormModal({
     expense ? peruDate(new Date(expense.occurred_at)) : peruDate(),
   );
   const [amount, setAmount] = useState(expense ? String(expense.amount) : "");
+  const [description, setDescription] = useState(expense?.description ?? "");
+  const [notes, setNotes] = useState(expense?.notes ?? "");
+  const [restoredDraft, setRestoredDraft] = useState<LocalDraft | null>(null);
   const [paidWithRuc, setPaidWithRuc] = useState(
     expense?.paid_with_ruc ?? false,
   );
@@ -535,7 +562,35 @@ export function ExpenseFormModal({
   );
   const { toast } = useToast();
   const previousStateRef = useRef(initialActionState);
-  useActionToast(state, previousStateRef, toast, () => onOpenChange(false));
+  useActionToast(state, previousStateRef, toast, () => {
+    if (!expense) clearLocalDraft(userId, "expense");
+    onOpenChange(false);
+  });
+  useEffect(() => {
+    if (!open || expense) return;
+    const saved = readLocalDraft(userId, "expense");
+    const draft =
+      saved && saved.shiftId !== (activeShiftId ?? "")
+        ? { ...saved, includeShift: "false" }
+        : saved;
+    const frame = window.requestAnimationFrame(() => {
+      setCategoryId(draft?.categoryId ?? "");
+      setDate(draft?.date ?? peruDate());
+      setAmount(draft?.amount ?? "");
+      setPaidWithRuc(draft?.paidWithRuc === "true");
+      setDescription(draft?.description ?? "");
+      setNotes(draft?.notes ?? "");
+      setRestoredDraft(draft);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, expense, userId, activeShiftId]);
+  const saveDraft = (patch: LocalDraft) => {
+    if (!expense)
+      updateLocalDraft(userId, "expense", {
+        ...patch,
+        shiftId: activeShiftId ?? "",
+      });
+  };
   const activeCategories = categories.filter(
     (category) => category.active || category.id === expense?.category_id,
   );
@@ -555,7 +610,10 @@ export function ExpenseFormModal({
             categories={activeCategories}
             disabled={pending}
             managingCategories={managingCategories}
-            onChange={setCategoryId}
+            onChange={(value) => {
+              setCategoryId(value);
+              saveDraft({ categoryId: value });
+            }}
             onManageCategories={onManageCategories}
             value={categoryId}
           />
@@ -565,7 +623,10 @@ export function ExpenseFormModal({
                 id="expense-date"
                 name="date"
                 value={date}
-                onChange={setDate}
+                onChange={(value) => {
+                  setDate(value);
+                  saveDraft({ date: value });
+                }}
                 disabled={pending}
               />
             </Field>
@@ -575,7 +636,10 @@ export function ExpenseFormModal({
                 name="amount"
                 placeholder="0.00"
                 value={amount}
-                onValueChange={setAmount}
+                onValueChange={(value) => {
+                  setAmount(value);
+                  saveDraft({ amount: value });
+                }}
                 maxLength={15}
                 required
                 disabled={pending}
@@ -583,11 +647,30 @@ export function ExpenseFormModal({
             </Field>
           </div>
           <PaymentFields
-            defaultMethod={expense?.payment_method}
-            defaultCashPaid={expense?.cash_paid}
+            key={restoredDraft ? "restored" : "default"}
+            defaultMethod={
+              restoredDraft?.paymentMethod &&
+              ["cash", "yape", "plin", "card"].includes(
+                restoredDraft.paymentMethod,
+              )
+                ? (restoredDraft.paymentMethod as PaymentMethod)
+                : expense?.payment_method
+            }
+            defaultCashPaid={
+              restoredDraft?.cashPaid
+                ? Number(restoredDraft.cashPaid)
+                : expense?.cash_paid
+            }
             amount={amount}
             canLinkShift={!!activeShiftId && date === peruDate()}
             linkedToShift={!!expense?.shift_id}
+            existingRecord={!!expense}
+            initialIncludeShift={
+              restoredDraft?.includeShift === undefined
+                ? undefined
+                : restoredDraft.includeShift === "true"
+            }
+            onDraftChange={saveDraft}
             disabled={pending}
           />
           <Field label="Descripción" htmlFor="expense-description">
@@ -595,7 +678,11 @@ export function ExpenseFormModal({
               id="expense-description"
               name="description"
               maxLength={120}
-              defaultValue={expense?.description ?? ""}
+              value={description}
+              onChange={(event) => {
+                setDescription(event.target.value);
+                saveDraft({ description: event.target.value });
+              }}
               placeholder="Por ejemplo, estacionamiento"
               required
               disabled={pending}
@@ -609,7 +696,10 @@ export function ExpenseFormModal({
                   name="paidWithRuc"
                   value="true"
                   checked={paidWithRuc}
-                  onChange={(event) => setPaidWithRuc(event.target.checked)}
+                  onChange={(event) => {
+                    setPaidWithRuc(event.target.checked);
+                    saveDraft({ paidWithRuc: String(event.target.checked) });
+                  }}
                   disabled={pending}
                   className="size-4 rounded border-input accent-primary"
                 />
@@ -630,12 +720,21 @@ export function ExpenseFormModal({
               id="expense-notes"
               name="notes"
               maxLength={500}
-              defaultValue={expense?.notes ?? ""}
+              value={notes}
+              onChange={(event) => {
+                setNotes(event.target.value);
+                saveDraft({ notes: event.target.value });
+              }}
               disabled={pending}
               className="flex min-h-22 w-full resize-y rounded-xl border border-input bg-card px-3.5 py-3 text-sm shadow-xs outline-none transition-colors placeholder:text-muted-foreground/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/15 disabled:cursor-not-allowed disabled:opacity-50"
               placeholder="Algo que quieras recordar"
             />
           </Field>
+          {!expense && (
+            <p className="text-xs text-muted-foreground">
+              Este borrador se conserva en tu dispositivo si pierdes conexión.
+            </p>
+          )}
           <ModalActions
             pending={pending}
             submitLabel={expense ? "Guardar cambios" : "Guardar gasto"}
@@ -746,6 +845,7 @@ export function FuelFormModal({
           amount={amount}
           canLinkShift={!!activeShiftId && date === peruDate()}
           linkedToShift={!!refill?.shift_id}
+          existingRecord={!!refill}
           disabled={pending}
         />
         <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-background/55 px-3.5 py-3 text-sm">

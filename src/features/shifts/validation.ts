@@ -37,3 +37,22 @@ export const shiftTransitionSchema = z.object({
   action: z.enum(["pause", "resume", "finish"]),
   odometerEnd: optionalOdometerSchema,
 });
+
+export const shiftTimeCorrectionSchema = z.object({
+  shiftId: z.string().uuid("La jornada no es válida."),
+  startTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Revisa la hora de inicio."),
+  endTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Revisa la hora de fin."),
+  confirmed: z.literal(true, "Confirma que revisaste los horarios."),
+});
+
+export const cashCountSchema = z.object({
+  shiftId: z.string().uuid("La jornada no es válida."),
+  countedCash: z
+    .string()
+    .trim()
+    .regex(/^\d{1,12}(?:\.\d{1,2})?$/, "Ingresa un monto válido."),
+});

@@ -1,8 +1,7 @@
-# Modelo de datos del MVP
+# Modelo de datos de Rinde
 
-Este documento define el destino del producto. Las entidades hasta
-`recurring_expenses` están migradas en la iteración 4; las posteriores son
-decisiones de diseño para cambios futuros.
+Este documento define el modelo del producto. La migración de `goals` y del
+arqueo de `work_shifts` está preparada y pendiente de aplicar al proyecto remoto.
 
 ## Tablas y relaciones
 
@@ -17,7 +16,7 @@ vincular, por ejemplo, la jornada de otro usuario aunque se conozca su UUID.
 | user_settings      | `user_id` PK; PEN, America/Lima, modo daily/shift y RUC opcional                                                                  | 1     |
 | user_platforms     | id, user_id, name, active; nombre normalizado único por usuario                                                                   | 1     |
 | vehicles           | user_id PK, name, odometer_km opcional; un vehículo principal                                                                     | 1     |
-| work_shifts        | id, user_id, platform_id, started_at, ended_at, status, odometer_start/end, opening_cash                                          | 2     |
+| work_shifts        | id, user_id, platform_id, started_at, ended_at, status, odometer_start/end, opening_cash, cash_counted/at                        | 2     |
 | shift_pauses       | id, user_id, shift_id, started_at, ended_at                                                                                       | 2     |
 | earnings           | id, user_id, platform_id, date, mode, shift_id opcional, reported_amount, tips, bonuses, inclusion flags, orders, notes, revision | 3     |
 | earnings_history   | id, user_id, earnings_id, before/after JSONB, changed_at; sólo lectura para propietario                                           | 3     |
@@ -26,7 +25,7 @@ vincular, por ejemplo, la jornada de otro usuario aunque se conozca su UUID.
 | fuel_refills       | id, user_id, occurred_at, amount, liters, odometer_km, full_tank, notes, shift_id, payment_method y cash_paid opcionales          | 4     |
 | payment_receipts   | id, user_id, platform_id, shift_id opcional, occurred_at, amount, payment_method, cash_received y descripción opcional            | 5     |
 | recurring_expenses | id, user_id, category_id, amount, cadence weekly/monthly, anchor_date, active                                                     | 4     |
-| goals              | user_id PK, daily_income, weekly_income, weekly_minutes opcionales                                                                | 5     |
+| goals              | user_id PK, weekly_income positivo; meta semanal opcional                                                                          | 6     |
 
 Las sugerencias frecuentes se consultan en `expenses`, agrupando descripción
 normalizada, categoría e importe por frecuencia/recencia. No necesitan otra tabla

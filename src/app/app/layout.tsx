@@ -21,6 +21,7 @@ export default async function ProtectedLayout({
     <AppShell
       name={account.profile.display_name}
       quickRegister={{
+        userId: quickRegister.userId,
         categories: quickRegister.categories,
         defaultMode: account.settings.earnings_mode,
         platforms: account.platforms.filter((platform) => platform.active),

@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LoaderCircle, Pause, Play, Route, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,7 @@ import {
 import type { UserPlatform } from "@/types/database";
 import { decimalToCents, formatMoney } from "@/lib/finance/money";
 import { formatLimaTime } from "@/lib/format/lima-time";
+import { SlideToStart } from "@/features/dashboard/slide-to-start";
 
 export type DashboardShift = {
   cashBalance: number;
@@ -36,16 +38,24 @@ export type DashboardShift = {
 export function ActiveShiftSummary({
   base,
   current,
+  uncountedShiftId,
   activePlatforms,
   referenceTime,
 }: {
   base: string;
   current: DashboardShift | null;
+  uncountedShiftId?: string;
   activePlatforms: UserPlatform[];
   referenceTime: string;
 }) {
   if (!current)
-    return <NoActiveShift base={base} activePlatforms={activePlatforms} />;
+    return (
+      <NoActiveShift
+        base={base}
+        activePlatforms={activePlatforms}
+        uncountedShiftId={uncountedShiftId}
+      />
+    );
 
   return <CurrentShift current={current} referenceTime={referenceTime} />;
 }
@@ -53,9 +63,11 @@ export function ActiveShiftSummary({
 function NoActiveShift({
   base,
   activePlatforms,
+  uncountedShiftId,
 }: {
   base: string;
   activePlatforms: UserPlatform[];
+  uncountedShiftId?: string;
 }) {
   const [startOpen, setStartOpen] = useState(false);
   return (
@@ -82,13 +94,15 @@ function NoActiveShift({
             <Link href={base + "/activity"}>Iniciar jornada</Link>
           </Button>
         ) : (
-          <Button
-            type="button"
-            className="mt-5 w-full"
-            onClick={() => setStartOpen(true)}
+          <SlideToStart onComplete={() => setStartOpen(true)} />
+        )}
+        {uncountedShiftId && base !== "/preview" && (
+          <Link
+            href={`/app/activity/${uncountedShiftId}?cash=1`}
+            className="mt-4 inline-block text-xs font-semibold text-primary underline underline-offset-4"
           >
-            Iniciar jornada
-          </Button>
+            Contar el efectivo de tu última jornada
+          </Link>
         )}
         <StartShiftModal
           activePlatforms={activePlatforms}
@@ -112,6 +126,7 @@ function CurrentShift({
     initialActionState,
   );
   const { toast } = useToast();
+  const router = useRouter();
   const lastState = useRef(initialActionState);
   const [now, setNow] = useState(() => Date.parse(referenceTime));
   const [pendingAction, setPendingAction] = useState<
@@ -143,7 +158,9 @@ function CurrentShift({
       formatShiftNotification(state.message),
       state.status === "error" ? "error" : "success",
     );
-  }, [state, toast]);
+    if (state.status === "success" && pendingAction === "finish")
+      router.push(`/app/activity/${current.id}?cash=1`);
+  }, [state, toast, pendingAction, router, current.id]);
 
   return (
     <Card className="overflow-hidden border-primary/20 shadow-[0_16px_34px_-26px_rgb(32_42_58_/_0.45)]">

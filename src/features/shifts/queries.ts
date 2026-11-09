@@ -71,6 +71,7 @@ export const getShiftWorkspace = cache(async () => {
       : null;
 
   return {
+    userId: user.id,
     platforms,
     activePlatforms: platforms.filter((platform) => platform.active),
     current,

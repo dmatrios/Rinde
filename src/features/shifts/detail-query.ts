@@ -1,0 +1,175 @@
+import "server-only";
+
+import { requireUser } from "@/lib/auth/session";
+import { createClient } from "@/lib/supabase/server";
+import { decimalToCents, earningGrossCents } from "@/lib/finance/money";
+import type {
+  Earning,
+  Expense,
+  ExpenseCategory,
+  FuelRefill,
+  PaymentReceipt,
+  ShiftPause,
+  UserPlatform,
+  WorkShift,
+} from "@/types/database";
+
+export type ShiftMovement = {
+  id: string;
+  kind: "receipt" | "expense" | "fuel";
+  title: string;
+  occurredAt: string;
+  cents: number;
+  editHref?: string;
+};
+
+export async function getShiftDetail(id: string) {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+  )
+    return null;
+  const user = await requireUser();
+  const supabase = await createClient();
+  const { data: shift, error: shiftError } = await supabase
+    .from("work_shifts")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("id", id)
+    .maybeSingle();
+  if (shiftError) throw new Error("No pudimos cargar esta jornada.");
+  if (!shift) return null;
+
+  const [
+    platform,
+    pauses,
+    earnings,
+    receipts,
+    expenses,
+    fuel,
+    categories,
+    balance,
+  ] = await Promise.all([
+    supabase
+      .from("user_platforms")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("id", shift.platform_id)
+      .single(),
+    supabase
+      .from("shift_pauses")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("shift_id", id)
+      .order("started_at"),
+    supabase
+      .from("earnings")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("shift_id", id),
+    supabase
+      .from("payment_receipts")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("shift_id", id)
+      .order("occurred_at", { ascending: false }),
+    supabase
+      .from("expenses")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("shift_id", id)
+      .order("occurred_at", { ascending: false }),
+    supabase
+      .from("fuel_refills")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("shift_id", id)
+      .order("occurred_at", { ascending: false }),
+    supabase.from("expense_categories").select("*").eq("user_id", user.id),
+    supabase.rpc("get_shift_cash_balance", { p_shift_id: id }),
+  ]);
+  if (
+    platform.error ||
+    pauses.error ||
+    earnings.error ||
+    receipts.error ||
+    expenses.error ||
+    fuel.error ||
+    categories.error ||
+    balance.error
+  )
+    throw new Error("No pudimos cargar el detalle de esta jornada.");
+
+  const categoryNames = new Map(
+    (categories.data as ExpenseCategory[]).map((category) => [
+      category.id,
+      category.name,
+    ]),
+  );
+  const incomeRecords = earnings.data as Earning[];
+  const receiptRecords = receipts.data as PaymentReceipt[];
+  const expenseRecords = expenses.data as Expense[];
+  const fuelRecords = fuel.data as FuelRefill[];
+  const grossCents =
+    incomeRecords.reduce(
+      (total, earning) => total + earningGrossCents(earning),
+      0,
+    ) +
+    (incomeRecords.length
+      ? 0
+      : receiptRecords.reduce(
+          (total, receipt) => total + decimalToCents(receipt.amount),
+          0,
+        ));
+  const expensesCents =
+    expenseRecords.reduce(
+      (total, expense) => total + decimalToCents(expense.amount),
+      0,
+    ) +
+    fuelRecords.reduce(
+      (total, refill) => total + decimalToCents(refill.amount),
+      0,
+    );
+  const movements: ShiftMovement[] = [
+    ...receiptRecords.map((receipt) => ({
+      id: receipt.id,
+      kind: "receipt" as const,
+      title: "Cobro",
+      occurredAt: receipt.occurred_at,
+      cents: decimalToCents(receipt.amount),
+    })),
+    ...expenseRecords.map((expense) => ({
+      id: expense.id,
+      kind: "expense" as const,
+      title:
+        expense.description ||
+        categoryNames.get(expense.category_id) ||
+        "Gasto",
+      occurredAt: expense.occurred_at,
+      cents: decimalToCents(expense.amount),
+      editHref: `/app/expenses?edit=${expense.id}`,
+    })),
+    ...fuelRecords.map((refill) => ({
+      id: refill.id,
+      kind: "fuel" as const,
+      title: "Combustible",
+      occurredAt: refill.occurred_at,
+      cents: decimalToCents(refill.amount),
+      editHref: `/app/expenses?editFuel=${refill.id}`,
+    })),
+  ].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+
+  return {
+    shift: shift as WorkShift,
+    platform: platform.data as UserPlatform,
+    pauses: pauses.data as ShiftPause[],
+    cashBalance: Number(balance.data ?? 0),
+    grossCents,
+    expensesCents,
+    orders:
+      incomeRecords.reduce(
+        (total, earning) => total + (earning.orders ?? 0),
+        0,
+      ) || receiptRecords.length,
+    movements,
+  };
+}

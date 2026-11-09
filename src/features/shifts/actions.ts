@@ -5,10 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth/session";
 import type { ActionState } from "@/lib/auth/types";
 import {
+  cashCountSchema,
   platformIdSchema,
   platformNameSchema,
   startShiftSchema,
   shiftTransitionSchema,
+  shiftTimeCorrectionSchema,
 } from "@/features/shifts/validation";
 import {
   normalizePlatformName,
@@ -262,4 +264,113 @@ export async function transitionShift(
         ? "Jornada reanudada."
         : "Jornada finalizada.",
   );
+}
+
+export async function correctShiftTime(
+  _previous: ActionState,
+  form: FormData,
+): Promise<ActionState> {
+  const user = await requireUser();
+  const parsed = shiftTimeCorrectionSchema.safeParse({
+    shiftId: form.get("shiftId"),
+    startTime: form.get("startTime"),
+    endTime: form.get("endTime"),
+    confirmed: form.get("confirmed") === "true",
+  });
+  if (!parsed.success)
+    return failure(parsed.error.issues[0]?.message ?? "Revisa los horarios.");
+
+  const supabase = await createClient();
+  const { data: shift, error: shiftError } = await supabase
+    .from("work_shifts")
+    .select("started_at, ended_at, status")
+    .eq("id", parsed.data.shiftId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (shiftError || !shift || shift.status !== "completed" || !shift.ended_at)
+    return failure("Esta jornada no se puede corregir.");
+
+  const startDate = limaDate(shift.started_at);
+  const endDate = limaDate(shift.ended_at);
+  const nextStart = new Date(`${startDate}T${parsed.data.startTime}:00-05:00`);
+  const nextEnd = new Date(`${endDate}T${parsed.data.endTime}:00-05:00`);
+  if (nextEnd <= nextStart)
+    return failure("La hora de fin debe ser posterior al inicio.");
+  if (nextEnd.getTime() > Date.now() + 60_000)
+    return failure("La hora de fin no puede estar en el futuro.");
+
+  const { data: pauses, error: pausesError } = await supabase
+    .from("shift_pauses")
+    .select("started_at, ended_at")
+    .eq("shift_id", parsed.data.shiftId)
+    .eq("user_id", user.id);
+  if (pausesError) return failure(unavailable);
+  if (
+    pauses.some(
+      (pause) =>
+        !pause.ended_at ||
+        new Date(pause.started_at) < nextStart ||
+        new Date(pause.ended_at) > nextEnd,
+    )
+  )
+    return failure("Las horas deben incluir todas las pausas de la jornada.");
+
+  const { error } = await supabase
+    .from("work_shifts")
+    .update({
+      started_at: nextStart.toISOString(),
+      ended_at: nextEnd.toISOString(),
+    })
+    .eq("id", parsed.data.shiftId)
+    .eq("user_id", user.id)
+    .eq("status", "completed")
+    .select("id")
+    .single();
+  if (error) return failure(unavailable);
+  refreshShiftViews();
+  revalidatePath(`/app/activity/${parsed.data.shiftId}`);
+  return success("Horario de la jornada actualizado.");
+}
+
+export async function saveCashCount(
+  _previous: ActionState,
+  form: FormData,
+): Promise<ActionState> {
+  const user = await requireUser();
+  const parsed = cashCountSchema.safeParse({
+    shiftId: form.get("shiftId"),
+    countedCash: form.get("countedCash"),
+  });
+  if (!parsed.success)
+    return failure(
+      parsed.error.issues[0]?.message ?? "Revisa el efectivo contado.",
+    );
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("work_shifts")
+    .update({
+      cash_counted: parsed.data.countedCash,
+      cash_counted_at: new Date().toISOString(),
+    })
+    .eq("id", parsed.data.shiftId)
+    .eq("user_id", user.id)
+    .eq("status", "completed")
+    .select("id")
+    .single();
+  if (error) return failure("No pudimos guardar el efectivo contado.");
+  revalidatePath(`/app/activity/${parsed.data.shiftId}`);
+  return success("Arqueo guardado.");
+}
+
+function limaDate(value: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Lima",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(value));
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
 }

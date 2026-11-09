@@ -1,13 +1,12 @@
 import Link from "next/link";
-import { ArrowUpRight, ChevronRight, LogOut, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, ChevronRight, ShieldCheck } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { Navigation } from "@/components/layout/navigation";
 import {
   QuickRegisterMenu,
   type QuickRegisterData,
 } from "@/components/layout/quick-register-menu";
-import { logout } from "@/features/auth/actions";
-import { Button } from "@/components/ui/button";
+import { LogoutForm } from "@/components/layout/logout-form";
 import { Badge } from "@/components/ui/badge";
 import { ToastProvider } from "@/components/ui/toast";
 
@@ -65,17 +64,8 @@ export function AppShell({
                 className="ml-auto shrink-0 text-muted-foreground"
               />
             </Link>
-            {!preview && (
-              <form action={logout}>
-                <Button
-                  variant="ghost"
-                  className="mt-2 w-full justify-start px-2 text-xs"
-                  type="submit"
-                >
-                  <LogOut />
-                  Cerrar sesión
-                </Button>
-              </form>
+            {!preview && quickRegister && (
+              <LogoutForm userId={quickRegister.userId} />
             )}
           </div>
         </aside>
@@ -109,15 +99,9 @@ export function AppShell({
                     <ArrowUpRight size={15} />
                   </Link>
                 ) : (
-                  <form action={logout} className="lg:hidden">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Cerrar sesión"
-                    >
-                      <LogOut />
-                    </Button>
-                  </form>
+                  quickRegister && (
+                    <LogoutForm userId={quickRegister.userId} compact />
+                  )
                 )}
               </div>
             </div>
@@ -140,7 +124,9 @@ export function AppShell({
           >
             {children}
           </main>
-          {!preview && quickRegister && <QuickRegisterMenu {...quickRegister} />}
+          {!preview && quickRegister && (
+            <QuickRegisterMenu {...quickRegister} />
+          )}
         </div>
         <div className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card px-3 pt-2 lg:hidden">
           <Navigation preview={preview} mobile />
