@@ -2,7 +2,6 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { LoaderCircle, Pause, Play, Route, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -126,7 +125,6 @@ function CurrentShift({
     initialActionState,
   );
   const { toast } = useToast();
-  const router = useRouter();
   const lastState = useRef(initialActionState);
   const [now, setNow] = useState(() => Date.parse(referenceTime));
   const [pendingAction, setPendingAction] = useState<
@@ -158,9 +156,7 @@ function CurrentShift({
       formatShiftNotification(state.message),
       state.status === "error" ? "error" : "success",
     );
-    if (state.status === "success" && pendingAction === "finish")
-      router.push(`/app/activity/${current.id}?cash=1`);
-  }, [state, toast, pendingAction, router, current.id]);
+  }, [state, toast]);
 
   return (
     <Card className="overflow-hidden border-primary/20 shadow-[0_16px_34px_-26px_rgb(32_42_58_/_0.45)]">

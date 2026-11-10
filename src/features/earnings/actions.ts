@@ -1,13 +1,69 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { requireUser } from "@/lib/auth/session";
-import type { ActionState } from "@/lib/auth/types";
+import { initialActionState, type ActionState } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
 import { earningFormSchema } from "@/features/earnings/validation";
+import { decimalToCents } from "@/lib/finance/money";
 
 const failure = (message: string): ActionState => ({ status: "error", message });
 const success = (message: string): ActionState => ({ status: "success", message });
+
+const closeIncomeSchema = z.object({
+  shiftId: z.string().uuid(),
+  reportedAmount: z.string().trim().regex(/^\d{1,12}(?:\.\d{1,2})?$/),
+});
+
+export async function saveShiftCloseIncome(
+  _previous: ActionState,
+  form: FormData,
+): Promise<ActionState> {
+  const parsed = closeIncomeSchema.safeParse({
+    shiftId: form.get("shiftId"),
+    reportedAmount: form.get("reportedAmount"),
+  });
+  if (!parsed.success) return failure("Ingresa un total válido.");
+  const user = await requireUser();
+  const supabase = await createClient();
+  const [{ data: shift, error: shiftError }, { data: receipts, error: receiptsError }] =
+    await Promise.all([
+      supabase
+        .from("work_shifts")
+        .select("platform_id, started_at, status")
+        .eq("id", parsed.data.shiftId)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("payment_receipts")
+        .select("amount")
+        .eq("shift_id", parsed.data.shiftId)
+        .eq("user_id", user.id),
+    ]);
+  if (shiftError || receiptsError || !shift || shift.status !== "completed")
+    return failure("Esta jornada no está disponible.");
+  const collectedCents = (receipts ?? []).reduce(
+    (sum, receipt) => sum + decimalToCents(receipt.amount),
+    0,
+  );
+  if (decimalToCents(parsed.data.reportedAmount) < collectedCents)
+    return failure("El total no puede ser menor que los cobros de esta jornada.");
+
+  const earning = new FormData();
+  earning.set("mode", "shift");
+  earning.set("platformId", shift.platform_id);
+  earning.set("shiftId", parsed.data.shiftId);
+  earning.set("date", limaDate(shift.started_at));
+  earning.set("reportedAmount", parsed.data.reportedAmount);
+  earning.set("tips", "0");
+  earning.set("bonuses", "0");
+  earning.set("tipsIncluded", "true");
+  earning.set("bonusesIncluded", "true");
+  earning.set("orders", "");
+  earning.set("notes", "");
+  return saveEarning(initialActionState, earning);
+}
 
 export async function saveEarning(
   _previous: ActionState,
@@ -71,5 +127,19 @@ export async function saveEarning(
 
   revalidatePath("/app");
   revalidatePath("/app/earnings");
+  if (parsed.data.shiftId)
+    revalidatePath(`/app/activity/${parsed.data.shiftId}`);
   return success(parsed.data.earningId ? "Ingreso actualizado." : "Ingreso registrado.");
+}
+
+function limaDate(value: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Lima",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(value));
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
 }

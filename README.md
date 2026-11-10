@@ -15,8 +15,14 @@ Nombre provisional. Sin datos personales precargados ni credenciales incluidas.
 - Gestión de plataformas e inicio, pausa, reanudación, finalización e historial
   reciente de jornadas con marcas de tiempo del servidor. Cada jornada tiene un
   detalle de horarios, pausas y movimientos, con corrección de horas confirmada.
+  Al finalizar se puede registrar el ingreso del turno o dejarlo pendiente, y se
+  muestra un resumen de cierre con los kilómetros medidos. La pregunta de cierre
+  desglosa los cobros asociados, permite asociar cobros del mismo horario que
+  quedaron sin turno y evita sumar dos veces lo que ya incluye el total.
 - Registro y edición de ingresos por día o jornada, con importes decimales,
-  bloqueo de duplicados y un historial de cambios por registro.
+  bloqueo de duplicados y un historial de cambios por registro. La pantalla de
+  ingresos muestra también los cobros individuales por separado del total de
+  plataforma para que se puedan consultar sin duplicar ganancias.
 - Categorías operativas o personales, gastos editables, gastos frecuentes que se
   confirman al registrarlos y recargas de combustible separadas para no duplicar
   importes.

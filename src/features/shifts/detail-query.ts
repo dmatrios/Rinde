@@ -99,6 +99,30 @@ export async function getShiftDetail(id: string) {
   )
     throw new Error("No pudimos cargar el detalle de esta jornada.");
 
+  const [dailyResult, unlinkedResult] = await Promise.all([
+    supabase
+      .from("earnings")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("platform_id", shift.platform_id)
+      .eq("date", limaDate(shift.started_at))
+      .eq("mode", "daily")
+      .limit(1),
+    shift.status === "completed" && shift.ended_at
+      ? supabase
+          .from("payment_receipts")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("platform_id", shift.platform_id)
+          .is("shift_id", null)
+          .gte("occurred_at", shift.started_at)
+          .lte("occurred_at", shift.ended_at)
+          .order("occurred_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (dailyResult.error || unlinkedResult.error)
+    throw new Error("No pudimos cargar los cobros de esta jornada.");
+
   const categoryNames = new Map(
     (categories.data as ExpenseCategory[]).map((category) => [
       category.id,
@@ -164,6 +188,15 @@ export async function getShiftDetail(id: string) {
     pauses: pauses.data as ShiftPause[],
     cashBalance: Number(balance.data ?? 0),
     grossCents,
+    shiftEarningCents: incomeRecords.length
+      ? incomeRecords.reduce(
+          (total, earning) => total + earningGrossCents(earning),
+          0,
+        )
+      : null,
+    hasDailyEarning: dailyResult.data.length > 0,
+    linkedReceipts: receiptRecords,
+    unlinkedReceipts: unlinkedResult.data as PaymentReceipt[],
     expensesCents,
     orders:
       incomeRecords.reduce(
@@ -172,4 +205,16 @@ export async function getShiftDetail(id: string) {
       ) || receiptRecords.length,
     movements,
   };
+}
+
+function limaDate(value: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Lima",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(value));
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
 }

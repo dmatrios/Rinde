@@ -2,7 +2,6 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Check,
   ChevronDown,
@@ -83,9 +82,6 @@ function CurrentShift({
 }) {
   const [startOpen, setStartOpen] = useState(openStartOnLoad);
   const [receiptOpen, setReceiptOpen] = useState(false);
-  const [lastAction, setLastAction] = useState<
-    "pause" | "resume" | "finish" | null
-  >(null);
   const [odometerAction, setOdometerAction] =
     useState<OdometerTransitionAction | null>(null);
   const [state, action, pending] = useActionState(
@@ -93,7 +89,6 @@ function CurrentShift({
     initialActionState,
   );
   const { toast } = useToast();
-  const router = useRouter();
   const lastState = useRef(initialActionState);
 
   useEffect(() => {
@@ -103,9 +98,7 @@ function CurrentShift({
       formatShiftNotification(state.message),
       state.status === "error" ? "error" : "success",
     );
-    if (state.status === "success" && lastAction === "finish" && current)
-      router.push(`/app/activity/${current.id}?cash=1`);
-  }, [state, toast, lastAction, current, router]);
+  }, [state, toast]);
 
   if (!current) {
     return (
@@ -191,7 +184,6 @@ function CurrentShift({
             <form
               action={action}
               aria-busy={pending}
-              onSubmit={() => setLastAction(transitionAction)}
             >
               <input type="hidden" name="shiftId" value={current.id} />
               <input type="hidden" name="action" value={transitionAction} />
@@ -225,7 +217,6 @@ function CurrentShift({
             <form
               action={action}
               aria-busy={pending}
-              onSubmit={() => setLastAction("finish")}
             >
               <input type="hidden" name="shiftId" value={current.id} />
               <input type="hidden" name="action" value="finish" />
@@ -524,7 +515,6 @@ export function OdometerTransitionModal({
   );
   const [odometerEnd, setOdometerEnd] = useState("");
   const { toast } = useToast();
-  const router = useRouter();
   const lastState = useRef(initialActionState);
   useEffect(() => {
     if (!state.message || state === lastState.current) return;
@@ -532,10 +522,8 @@ export function OdometerTransitionModal({
     toast(state.message, state.status === "error" ? "error" : "success");
     if (state.status === "success") {
       onOpenChange(false);
-      if (actionName === "finish")
-        router.push(`/app/activity/${shiftId}?cash=1`);
     }
-  }, [onOpenChange, state, toast, actionName, router, shiftId]);
+  }, [onOpenChange, state, toast]);
   const copy = transitionCopy(actionName);
   return (
     <Modal

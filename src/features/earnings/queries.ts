@@ -14,6 +14,7 @@ import type {
 
 export type EarningsRecord = Earning & { platformName: string };
 export type EarningShift = WorkShift & { platformName: string };
+export type EarningsReceipt = PaymentReceipt & { platformName: string };
 
 function peruDate(value = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -30,7 +31,7 @@ function peruDate(value = new Date()): string {
 export const getEarningsWorkspace = cache(async () => {
   const user = await requireUser();
   const supabase = await createClient();
-  const [settingsResult, platformsResult, earningsResult, shiftsResult] =
+  const [settingsResult, platformsResult, earningsResult, shiftsResult, receiptsResult] =
     await Promise.all([
       supabase
         .from("user_settings")
@@ -56,13 +57,20 @@ export const getEarningsWorkspace = cache(async () => {
         .eq("status", "completed")
         .order("started_at", { ascending: false })
         .limit(60),
+      supabase
+        .from("payment_receipts")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("occurred_at", { ascending: false })
+        .limit(60),
     ]);
 
   if (
     settingsResult.error ||
     platformsResult.error ||
     earningsResult.error ||
-    shiftsResult.error
+    shiftsResult.error ||
+    receiptsResult.error
   ) {
     throw new Error("No pudimos cargar tus ingresos.");
   }
@@ -75,6 +83,10 @@ export const getEarningsWorkspace = cache(async () => {
     earnings: (earningsResult.data as Earning[]).map((earning) => ({
       ...earning,
       platformName: platformNames.get(earning.platform_id) ?? "Plataforma",
+    })),
+    receipts: (receiptsResult.data as PaymentReceipt[]).map((receipt) => ({
+      ...receipt,
+      platformName: platformNames.get(receipt.platform_id) ?? "Plataforma",
     })),
     shifts: (shiftsResult.data as WorkShift[]).map((shift) => ({
       ...shift,
@@ -167,6 +179,23 @@ export const getDashboardEarningsSummary = cache(
       throw new Error("No pudimos cargar tu avance.");
     }
 
+    const linkedShiftIds = [
+      ...new Set(
+        (receiptsResult.data as PaymentReceipt[])
+          .map((receipt) => receipt.shift_id)
+          .filter((id): id is string => id !== null),
+      ),
+    ];
+    const linkedEarningsResult = linkedShiftIds.length
+      ? await supabase
+          .from("earnings")
+          .select("date, mode, shift_id, platform_id, reported_amount, tips, bonuses, tips_included, bonuses_included, orders")
+          .eq("user_id", user.id)
+          .in("shift_id", linkedShiftIds)
+      : { data: [], error: null };
+    if (linkedEarningsResult.error)
+      throw new Error("No pudimos cargar tu avance.");
+
     const grossByDate = new Map(dates.map((date) => [date, 0]));
     const countByDate = new Map(dates.map((date) => [date, 0]));
     const ordersByDate = new Map(dates.map((date) => [date, 0]));
@@ -198,7 +227,10 @@ export const getDashboardEarningsSummary = cache(
     }
     for (const receipt of receiptsResult.data as PaymentReceipt[]) {
       const date = peruDate(new Date(receipt.occurred_at));
-      const coveredEarnings = earningsResult.data.filter(
+      const coveredEarnings = [
+        ...earningsResult.data,
+        ...linkedEarningsResult.data,
+      ].filter(
         (earning) =>
           (earning.mode === "shift" &&
             receipt.shift_id !== null &&

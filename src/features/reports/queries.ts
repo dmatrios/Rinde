@@ -180,11 +180,29 @@ export const getReportsData = cache(
       throw new Error("No pudimos cargar tus reportes.");
     }
 
+    const allReceipts = uniqueRows([
+      ...(receiptsResult.data as PaymentReceipt[]),
+      ...(weekReceiptsResult.data as PaymentReceipt[]),
+    ]);
+    const linkedShiftIds = [
+      ...new Set(allReceipts.map((receipt) => receipt.shift_id).filter((id): id is string => id !== null)),
+    ];
+    const linkedEarningsResult = linkedShiftIds.length
+      ? await supabase
+          .from("earnings")
+          .select("*")
+          .eq("user_id", user.id)
+          .in("shift_id", linkedShiftIds)
+      : { data: [], error: null };
+    if (linkedEarningsResult.error)
+      throw new Error("No pudimos cargar tus reportes.");
+
     const sources = {
       categories: categoriesResult.data as ExpenseCategory[],
       earnings: uniqueRows([
         ...(earningsResult.data as Earning[]),
         ...(weekEarningsResult.data as Earning[]),
+        ...(linkedEarningsResult.data as Earning[]),
       ]),
       expenses: uniqueRows([
         ...(expensesResult.data as Expense[]),
@@ -194,10 +212,7 @@ export const getReportsData = cache(
         ...(fuelResult.data as FuelRefill[]),
         ...(weekFuelResult.data as FuelRefill[]),
       ]),
-      receipts: uniqueRows([
-        ...(receiptsResult.data as PaymentReceipt[]),
-        ...(weekReceiptsResult.data as PaymentReceipt[]),
-      ]),
+      receipts: allReceipts,
       platforms: platformsResult.data as UserPlatform[],
     };
     const selectedShifts = shiftsResult.data as WorkShift[];

@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useRef, useState, type ComponentProps } from "react";
 import {
+  ArrowUpRight,
   Check,
   ChevronDown,
   ClipboardPenLine,
@@ -19,15 +21,16 @@ import { Modal } from "@/components/ui/modal";
 import { ModalPopover } from "@/components/ui/modal-popover";
 import { useToast } from "@/components/ui/toast";
 import { saveEarning } from "@/features/earnings/actions";
-import type { EarningsRecord, EarningShift } from "@/features/earnings/queries";
+import type { EarningsReceipt, EarningsRecord, EarningShift } from "@/features/earnings/queries";
 import { initialActionState } from "@/lib/auth/types";
-import { earningGrossCents, formatMoney } from "@/lib/finance/money";
+import { decimalToCents, earningGrossCents, formatMoney } from "@/lib/finance/money";
 import type { EarningsMode, UserPlatform } from "@/types/database";
 
 type WorkspaceProps = {
   defaultMode: EarningsMode;
   platforms: UserPlatform[];
   earnings: EarningsRecord[];
+  receipts: EarningsReceipt[];
   openOnLoad?: boolean;
   shifts: EarningShift[];
 };
@@ -36,6 +39,7 @@ export function EarningsWorkspace({
   defaultMode,
   platforms,
   earnings,
+  receipts,
   openOnLoad = false,
   shifts,
 }: WorkspaceProps) {
@@ -74,7 +78,7 @@ export function EarningsWorkspace({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="flex items-center gap-2 text-sm text-white/75">
-              <Wallet size={17} /> Ingresos brutos de hoy
+              <Wallet size={17} /> Totales reportados hoy
             </p>
             <p className="mt-4 tabular text-4xl font-semibold tracking-tight sm:text-5xl">
               {todayEarnings.length ? formatMoney(todayTotal) : "—"}
@@ -89,7 +93,7 @@ export function EarningsWorkspace({
         <p className="mt-4 text-xs leading-5 text-white/60">
           {todayEarnings.length
             ? "Incluye los extras que no estaban dentro del importe reportado."
-            : "Cuando registres un ingreso, aquí verás el total del día."}
+            : "Cuando registres un total de plataforma, lo verás aquí."}
         </p>
       </section>
 
@@ -97,7 +101,7 @@ export function EarningsWorkspace({
         <CardHeader className="flex items-center justify-between gap-3">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <ReceiptText size={18} /> Historial reciente
+              <ReceiptText size={18} /> Totales de plataforma
             </CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
               Puedes corregir cualquier registro cuando lo necesites.
@@ -157,6 +161,46 @@ export function EarningsWorkspace({
                 Agrega lo que generaste por plataforma, ya sea por día o al cerrar una jornada.
               </p>
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ReceiptText size={18} /> Cobros registrados
+          </CardTitle>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Si registras el total de una jornada, los cobros de esa jornada ya están incluidos en él.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {receipts.length ? (
+            <ul className="divide-y divide-border">
+              {receipts.map((receipt) => (
+                <li key={receipt.id}>
+                  <Link
+                    href={`/app/activity/movement/receipt/${receipt.id}`}
+                    className="group flex items-center justify-between gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold group-hover:text-primary">
+                        {receipt.platformName}
+                      </span>
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        {formatReceiptDate(receipt.occurred_at)} · {paymentMethodLabels[receipt.payment_method]} · {receipt.shift_id ? "En jornada" : "Sin jornada"}
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2 text-sm font-semibold tabular-nums">
+                      {formatMoney(decimalToCents(receipt.amount))}
+                      <ArrowUpRight size={16} className="text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">Aún no registraste cobros individuales.</p>
           )}
         </CardContent>
       </Card>
@@ -672,6 +716,23 @@ const dateFormatter = new Intl.DateTimeFormat("es-PE", {
   year: "numeric",
   timeZone: "America/Lima",
 });
+
+const receiptDateFormatter = new Intl.DateTimeFormat("es-PE", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "America/Lima",
+});
+
+const paymentMethodLabels = {
+  cash: "Efectivo",
+  yape: "Yape",
+  plin: "Plin",
+  card: "Tarjeta",
+} as const;
+
+function formatReceiptDate(value: string) {
+  return receiptDateFormatter.format(new Date(value));
+}
 
 function formatBusinessDate(value: string) {
   return dateFormatter.format(new Date(`${value}T12:00:00-05:00`));

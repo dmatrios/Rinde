@@ -127,6 +127,22 @@ a {
     transform: translateY(0);
   }
 }
+.shift-confetti {
+  animation: shift-confetti-fall 1.7s ease-out both;
+}
+@keyframes shift-confetti-fall {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(170px) rotate(340deg);
+  }
+}
 .modal-scroll,
 .modal-popover {
   scrollbar-width: thin;
@@ -149,6 +165,9 @@ a {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .shift-confetti {
+    display: none;
+  }
   *,
   *::before,
   *::after {

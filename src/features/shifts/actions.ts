@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth/session";
 import type { ActionState } from "@/lib/auth/types";
@@ -257,6 +258,8 @@ export async function transitionShift(
     return failure(unavailable);
   }
   refreshShiftViews();
+  if (parsed.data.action === "finish")
+    redirect(`/app/activity/${parsed.data.shiftId}?finished=1`);
   return success(
     parsed.data.action === "pause"
       ? "Jornada pausada."

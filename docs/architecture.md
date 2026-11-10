@@ -13,10 +13,23 @@ inicial y pagos dentro o fuera de la jornada. Los cobros aparecen en reportes;
 cuando existe un ingreso total del mismo ámbito, ese total los cubre y evita
 sumarlos dos veces. El saldo de caja se calcula en PostgreSQL a partir del
 efectivo inicial, cobros en efectivo y gastos en efectivo vinculados a la jornada.
+La pantalla de ingresos consulta los cobros propios recientes y los presenta en
+una lista separada de los totales reportados; cada cobro enlaza a su detalle.
 `/app/activity/[id]` consulta únicamente la jornada del usuario autenticado y
 sus movimientos vinculados. La corrección de horas requiere confirmación,
 mantiene las fechas originales y valida que las pausas sigan dentro del nuevo
 intervalo. Los gastos y recargas del detalle enlazan a sus formularios de edición.
+Al cerrar una jornada, la acción redirige a su detalle. El ingreso rápido usa el
+registro por jornada existente; se puede posponer y retomarlo desde ese detalle.
+El resumen de cierre sólo muestra kilómetros cuando hay lecturas suficientes y
+excluye los tramos de pausa. No se guarda un importe ficticio al posponerlo.
+El total rápido se valida contra la suma de cobros vinculados. Cada movimiento
+tiene una pantalla de detalle. Desde el detalle de un cobro sin jornada se puede
+asociar a una jornada finalizada de la misma plataforma, aunque se haya anotado
+después del turno. La acción verifica propiedad, plataforma y que la suma de
+cobros no supere el ingreso total de la jornada. Los reportes buscan
+el ingreso del turno incluso si un cobro ocurrió en otra fecha del calendario,
+para no duplicarlo al cruzar la medianoche.
 La vista «Mi semana» de reportes permite recorrer semanas completas; la semana
 vigente se limita a hoy. Usa los mismos datos y reglas de importes que los
 reportes por fecha, y conserva su selección de fecha por separado.

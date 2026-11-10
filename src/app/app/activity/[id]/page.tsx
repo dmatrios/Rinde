@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Clock3, Pencil, Route, Wallet } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Clock3, Route, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CashCountModal } from "@/features/shifts/cash-count-modal";
+import { workDistanceKm } from "@/features/shifts/distance";
 import { EditShiftTimeModal } from "@/features/shifts/edit-shift-time-modal";
 import { getShiftDetail } from "@/features/shifts/detail-query";
+import { ShiftFinishFlow } from "@/features/shifts/shift-finish-flow";
 import { formatMoney, decimalToCents } from "@/lib/finance/money";
 
 export const metadata = { title: "Detalle de jornada" };
@@ -15,13 +17,14 @@ export default async function ShiftDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ cash?: string }>;
+  searchParams: Promise<{ cash?: string; finished?: string }>;
 }) {
   const { id } = await params;
-  const { cash } = await searchParams;
+  const { cash, finished } = await searchParams;
   const detail = await getShiftDetail(id);
   if (!detail) notFound();
   const { shift, platform, pauses, movements } = detail;
+  const distanceKm = workDistanceKm(shift, pauses);
   const end = shift.ended_at ? new Date(shift.ended_at) : new Date();
   const pauseMs = pauses.reduce(
     (total, pause) =>
@@ -62,6 +65,18 @@ export default async function ShiftDetailPage({
               : "En curso"}
         </span>
       </header>
+
+      {shift.status === "completed" && (
+        <ShiftFinishFlow
+          shiftId={shift.id}
+          distanceKm={distanceKm}
+          savedIncomeCents={detail.shiftEarningCents}
+          hasDailyEarning={detail.hasDailyEarning}
+          linkedReceipts={detail.linkedReceipts}
+          unlinkedReceipts={detail.unlinkedReceipts}
+          openOnLoad={finished === "1"}
+        />
+      )}
 
       <section className="grid gap-3 sm:grid-cols-3">
         <Summary
@@ -187,7 +202,7 @@ export default async function ShiftDetailPage({
         <CardHeader>
           <CardTitle>Movimientos de esta jornada</CardTitle>
           <p className="mt-1 text-xs text-muted-foreground">
-            Puedes corregir un gasto desde su detalle.
+            Abre cada movimiento para ver sus datos o corregir un gasto.
           </p>
         </CardHeader>
         <CardContent>
@@ -198,29 +213,27 @@ export default async function ShiftDetailPage({
                   key={`${movement.kind}-${movement.id}`}
                   className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
+                  <Link
+                    href={`/app/activity/movement/${movement.kind}/${movement.id}`}
+                    className="group min-w-0 flex-1 rounded-lg py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <p className="truncate text-sm font-medium group-hover:text-primary">
                       {movement.title}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {formatDateTime(movement.occurredAt)}
                     </p>
-                  </div>
+                  </Link>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold tabular-nums">
                       {movement.kind === "receipt" ? "+" : "−"}
                       {formatMoney(movement.cents)}
                     </span>
-                    {movement.editHref && (
-                      <Button asChild size="sm" variant="ghost">
-                        <Link
-                          href={movement.editHref}
-                          aria-label={`Editar ${movement.title}`}
-                        >
-                          <Pencil size={15} />
-                        </Link>
-                      </Button>
-                    )}
+                    <Button asChild size="sm" variant="ghost">
+                      <Link href={`/app/activity/movement/${movement.kind}/${movement.id}`} aria-label={`Ver detalle de ${movement.title}`}>
+                        <ArrowUpRight size={15} />
+                      </Link>
+                    </Button>
                   </div>
                 </li>
               ))}

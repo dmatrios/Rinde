@@ -1,4 +1,5 @@
 import { decimalToCents, earningGrossCents } from "@/lib/finance/money";
+import { workDistanceKm } from "@/features/shifts/distance";
 import type {
   Earning,
   Expense,
@@ -96,7 +97,7 @@ export function calculateWeeklyProductivity({
       hourlyResult += result;
       shiftsWithTime++;
     }
-    const distance = workDistance(shift, shiftPauses);
+    const distance = workDistanceKm(shift, shiftPauses);
     if (distance !== null && distance > 0) {
       kilometers += distance;
       distanceResult += result;
@@ -112,29 +113,4 @@ export function calculateWeeklyProductivity({
     shiftsWithTime,
     shiftsWithDistance,
   };
-}
-
-function workDistance(shift: WorkShift, pauses: ShiftPause[]): number | null {
-  if (shift.odometer_start == null || shift.odometer_end == null) return null;
-  let cursor = shift.odometer_start;
-  let distance = 0;
-  for (const pause of [...pauses].sort((left, right) =>
-    left.started_at.localeCompare(right.started_at),
-  )) {
-    if (pause.odometer_pause == null || pause.odometer_pause < cursor)
-      return null;
-    distance += pause.odometer_pause - cursor;
-    if (pause.ended_at) {
-      if (
-        pause.odometer_resume == null ||
-        pause.odometer_resume < pause.odometer_pause
-      )
-        return null;
-      cursor = pause.odometer_resume;
-    } else {
-      cursor = shift.odometer_end;
-    }
-  }
-  if (shift.odometer_end < cursor) return null;
-  return distance + shift.odometer_end - cursor;
 }
