@@ -52,6 +52,11 @@ La vista pública `/preview` no
 consulta datos, no autentica y no guarda nada. Nunca es una excepción al control
 de acceso de `/app`.
 
+El manifiesto de instalación vive en `src/app/manifest.ts` y los iconos públicos
+usan la marca de Rinde. El acceso instalado abre `/app` y conserva las mismas
+reglas de sesión y autorización. La instalación no agrega caché de páginas
+privadas ni sincronización de datos sin conexión.
+
 ## Una aplicación, una base de datos
 
 App Router y Server Components para renderizar y leer. Server Actions para las
@@ -109,8 +114,8 @@ la migración y RLS sin requerir Docker. ESLint y sus reglas de Next verifican e
 código. Prettier mantiene un formato de código consistente. ESLint 9 conserva la
 compatibilidad declarada por los plugins del preset oficial de Next instalado.
 Los gráficos de reportes se componen con elementos de interfaz accesibles y CSS,
-manteniendo baja la carga inicial. La instalación PWA y la sincronización de
-registros sin conexión corresponden a etapas futuras.
+manteniendo baja la carga inicial. La instalación desde el navegador ya está
+preparada; la sincronización de registros sin conexión requiere trabajo aparte.
 
 Se utiliza Webpack mediante la opción oficial de Next para desarrollo y build,
 incluyendo Windows. El lockfile fija la resolución exacta. No hay scripts que
@@ -118,7 +123,7 @@ envíen datos del usuario a servicios externos adicionales.
 
 ## Próximas etapas (sin implementación automática)
 
-7. PWA, sincronización automática sin conexión, rendimiento y QA integral.
+7. Sincronización automática sin conexión, rendimiento y QA integral.
 
 ## Fuentes oficiales consultadas el 22/10/2026
 

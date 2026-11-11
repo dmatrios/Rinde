@@ -129,6 +129,13 @@ del usuario. El diseño de futuras tablas está en docs/data-model.md.
   verificar manualmente registro, confirmación, login, perfil, logout y
   recuperación. No registrar ni versionar valores de las variables.
 
+## Instalación en el teléfono
+
+- Rinde incorpora un manifiesto, iconos y una guía de instalación en Configuración.
+  El acceso instalado abre `/app` con las mismas reglas de sesión y autorización.
+- No hay service worker ni caché de páginas privadas. Instalar la aplicación no
+  permite consultar o enviar registros sin conexión.
+
 ## Validación temporal
 
 Por instrucción vigente del usuario, conservar la suite pero no ejecutar

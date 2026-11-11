@@ -6,6 +6,7 @@ import { ProfileForm } from "@/features/settings/profile-form";
 import { RucForm } from "@/features/settings/ruc-form";
 import { VehicleForm } from "@/features/settings/vehicle-form";
 import { DeleteAccountForm } from "@/features/settings/delete-account-form";
+import { InstallRinde } from "@/features/settings/install-rinde";
 import { PlatformManager } from "@/features/shifts/platform-manager";
 import type { getAccount } from "@/features/settings/queries";
 
@@ -94,6 +95,7 @@ export function SettingsView({ account }: { account?: Account }) {
               </dl>
             </CardContent>
           </Card>
+          {account && <InstallRinde />}
         </div>
         <Card>
           <CardHeader>

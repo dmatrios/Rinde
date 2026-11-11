@@ -43,12 +43,14 @@ Nombre provisional. Sin datos personales precargados ni credenciales incluidas.
   vencimiento de siete días. Se envían sólo cuando la persona pulsa Guardar con
   conexión disponible.
 - Sidebar desktop, navegación inferior móvil, estados vacíos y vista previa.
+- Instalación en la pantalla de inicio con nombre, iconos y colores de Rinde;
+  Configuración muestra cómo instalarla desde el navegador.
 - Pruebas de validación y PostgreSQL/RLS con dos usuarios de prueba aislados.
 
-Los gráficos de
-la aplicación se renderizan con componentes propios, sin introducir una librería
-de visualización adicional. La instalación como PWA y la sincronización automática
-de datos sin conexión corresponden a una etapa posterior.
+Los gráficos de la aplicación se renderizan con componentes propios, sin
+introducir una librería de visualización adicional. La instalación desde el
+navegador requiere HTTPS (Vercel ya lo ofrece). Las pantallas privadas siguen
+necesitando conexión; la sincronización de datos sin conexión es otro trabajo.
 
 ## 1. Requisitos
 
@@ -245,5 +247,5 @@ integración validada únicamente porque compile o pasen las pruebas SQL.
 
 ## Siguiente revisión
 
-Sólo tras revisar esta entrega: metas, PWA, borradores y mejoras de rendimiento.
-No avanzar automáticamente.
+La sincronización sin conexión, las notificaciones push y la publicación en
+tiendas requieren trabajo adicional. No avanzar automáticamente.
