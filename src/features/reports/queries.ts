@@ -243,7 +243,6 @@ export const getReportsData = cache(
         shifts: selectedShifts,
         pauses: pauseResult.data as ShiftPause[],
         earnings: sources.earnings,
-        receipts: sources.receipts,
         expenses: sources.expenses,
         fuel: sources.fuel,
         categories: sources.categories,

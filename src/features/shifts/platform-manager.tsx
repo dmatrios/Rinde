@@ -10,6 +10,7 @@ import {
 import { Check, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Modal } from "@/components/ui/modal";
 import { ModalPopover } from "@/components/ui/modal-popover";
 import { useToast } from "@/components/ui/toast";
@@ -344,6 +345,7 @@ function PlatformEditModal({
             required
             autoFocus
           />
+          <CashLimitField key={platform.id} initialValue={platform.cash_limit ?? null} />
           <div className="flex justify-end gap-3">
             <Button
               type="button"
@@ -361,6 +363,28 @@ function PlatformEditModal({
         </form>
       )}
     </Modal>
+  );
+}
+
+function CashLimitField({ initialValue }: { initialValue: number | null }) {
+  const [value, setValue] = useState(initialValue === null ? "" : String(initialValue));
+  return (
+    <div>
+      <label htmlFor="edit-platform-cash-limit" className="mb-2 block text-xs font-semibold">
+        Límite de efectivo (opcional)
+      </label>
+      <NumericInput
+        id="edit-platform-cash-limit"
+        name="cashLimit"
+        value={value}
+        onValueChange={setValue}
+        placeholder="Por ejemplo, 80.00"
+        maxLength={15}
+      />
+      <p className="mt-2 text-xs leading-5 text-muted-foreground">
+        Si cobras más en efectivo durante una jornada, verás el excedente por separado.
+      </p>
+    </div>
   );
 }
 

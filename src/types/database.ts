@@ -27,6 +27,7 @@ export type UserPlatform = {
   user_id: string;
   name: string;
   active: boolean;
+  cash_limit: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -196,8 +197,8 @@ export type Database = {
       >;
       user_platforms: Table<
         UserPlatform,
-        { id?: string; user_id: string; name: string; active?: boolean },
-        { name?: string; active?: boolean }
+        { id?: string; user_id: string; name: string; active?: boolean; cash_limit?: number | null },
+        { name?: string; active?: boolean; cash_limit?: number | null }
       >;
       vehicles: Table<
         Vehicle,

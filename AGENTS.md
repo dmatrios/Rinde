@@ -105,6 +105,12 @@ del usuario. El diseño de futuras tablas está en docs/data-model.md.
   añade el efectivo contado al cierre y la meta semanal con RLS y permisos
   explícitos. Pendiente de aplicar al proyecto remoto; no afirmar que está
   aplicada hasta verificarla. Las funciones nuevas dependen de ella.
+- La migración incremental
+  `supabase/migrations/20261111121835_platform_cash_limit.sql` añade el límite
+  opcional de efectivo por plataforma y el permiso de actualización para su
+  propietario autenticado. El usuario confirmó que la aplicó al proyecto remoto
+  el 11/11/2026; falta verificarla con una sesión real. No volver a aplicarla ni
+  editarla. El formulario del límite depende de ella.
 - El usuario autorizó el 09/11/2026 terminar las mejoras de arqueo, indicadores,
   meta y borradores y después subir estos cambios a GitHub. Esta autorización
   corresponde a este pase.

@@ -133,17 +133,10 @@ export async function getShiftDetail(id: string) {
   const receiptRecords = receipts.data as PaymentReceipt[];
   const expenseRecords = expenses.data as Expense[];
   const fuelRecords = fuel.data as FuelRefill[];
-  const grossCents =
-    incomeRecords.reduce(
-      (total, earning) => total + earningGrossCents(earning),
-      0,
-    ) +
-    (incomeRecords.length
-      ? 0
-      : receiptRecords.reduce(
-          (total, receipt) => total + decimalToCents(receipt.amount),
-          0,
-        ));
+  const grossCents = incomeRecords.reduce(
+    (total, earning) => total + earningGrossCents(earning),
+    0,
+  );
   const expensesCents =
     expenseRecords.reduce(
       (total, expense) => total + decimalToCents(expense.amount),

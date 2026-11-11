@@ -82,9 +82,9 @@ export default async function MovementDetailPage({
             {movement.description && (
               <DetailRow label="Detalle" value={movement.description} />
             )}
-            {movement.kind === "receipt" && movement.coveredByTotal && (
+            {movement.kind === "receipt" && (
               <p className="mt-4 rounded-xl bg-secondary px-4 py-3 text-xs leading-5 text-secondary-foreground">
-                Este cobro ya está incluido en un ingreso total. No se suma de nuevo.
+                Este cobro corresponde a un pedido. Se muestra aparte de lo que ganaste en tu jornada.
               </p>
             )}
             {movement.editHref && (

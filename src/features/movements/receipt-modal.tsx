@@ -16,13 +16,16 @@ import {
   updateLocalDraft,
 } from "@/lib/drafts/local-draft";
 import { savePaymentReceipt } from "./actions";
-import type { PaymentMethod, UserPlatform } from "@/types/database";
+import type { PaymentMethod, UserPlatform, WorkShift } from "@/types/database";
+
+const NO_SHIFTS: WorkShift[] = [];
 
 export function ReceiptModal({
   userId,
   open,
   onOpenChange,
   platforms,
+  shifts = NO_SHIFTS,
   shiftId = null,
   shiftPlatformId = null,
 }: {
@@ -30,17 +33,21 @@ export function ReceiptModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   platforms: UserPlatform[];
+  shifts?: WorkShift[];
   shiftId?: string | null;
   shiftPlatformId?: string | null;
 }) {
   const [platformId, setPlatformId] = useState(shiftPlatformId ?? "");
+  const [selectedShiftId, setSelectedShiftId] = useState(shiftId ?? "");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [shiftPickerOpen, setShiftPickerOpen] = useState(false);
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [amount, setAmount] = useState("");
   const [received, setReceived] = useState("");
   const [description, setDescription] = useState("");
   const draftKey = `receipt-${shiftId ?? "general"}`;
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const shiftTriggerRef = useRef<HTMLButtonElement>(null);
   const [state, action, pending] = useActionState(
     savePaymentReceipt,
     initialActionState,
@@ -63,7 +70,20 @@ export function ReceiptModal({
     const draft = readLocalDraft(userId, draftKey);
     if (!draft) return;
     const frame = window.requestAnimationFrame(() => {
-      if (!shiftPlatformId && draft.platformId) setPlatformId(draft.platformId);
+      const restoredPlatformId =
+        draft.platformId && platforms.some((item) => item.id === draft.platformId)
+          ? draft.platformId
+          : shiftPlatformId ?? "";
+      setPlatformId(restoredPlatformId);
+      if (draft.shiftId !== undefined) {
+        const activeMatch = draft.shiftId === shiftId && restoredPlatformId === shiftPlatformId;
+        const completedMatch = shifts.some(
+          (item) => item.id === draft.shiftId && item.platform_id === restoredPlatformId,
+        );
+        setSelectedShiftId(activeMatch || completedMatch ? draft.shiftId : "");
+      } else if (restoredPlatformId !== shiftPlatformId) {
+        setSelectedShiftId("");
+      }
       if (
         draft.method &&
         ["cash", "yape", "plin", "card"].includes(draft.method)
@@ -74,28 +94,54 @@ export function ReceiptModal({
       setDescription(draft.description ?? "");
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [open, userId, draftKey, shiftPlatformId]);
+  }, [open, userId, draftKey, shiftId, shiftPlatformId, platforms, shifts]);
+
+  const completedShifts = shifts.filter(
+    (item) => item.platform_id === platformId && item.status === "completed",
+  );
+  const hasActiveShift = !!shiftId && platformId === shiftPlatformId;
+  const selectedCompletedShift = completedShifts.find(
+    (item) => item.id === selectedShiftId,
+  );
+  const selectedShiftLabel =
+    selectedShiftId && hasActiveShift && selectedShiftId === shiftId
+      ? "Jornada actual"
+      : selectedCompletedShift
+        ? formatShiftSchedule(selectedCompletedShift)
+        : "Sin jornada";
 
   const change =
     method === "cash" && amount && received
       ? Math.max(0, decimalToCents(received) - decimalToCents(amount))
       : 0;
 
+  const selectShift = (nextShiftId: string) => {
+    setSelectedShiftId(nextShiftId);
+    updateLocalDraft(userId, draftKey, { platformId, shiftId: nextShiftId });
+    setShiftPickerOpen(false);
+  };
+
   return (
     <Modal
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          setPickerOpen(false);
+          setShiftPickerOpen(false);
+        }
+        onOpenChange(nextOpen);
+      }}
       title="Registrar cobro"
       description="Guarda lo que recibiste y cómo te pagaron."
     >
       <form action={action} className="space-y-5" aria-busy={pending}>
-        <input type="hidden" name="shiftId" value={shiftId ?? ""} />
+        <input type="hidden" name="shiftId" value={selectedShiftId} />
         <input
           type="hidden"
           name="platformId"
-          value={shiftPlatformId ?? platformId}
+          value={platformId}
         />
-        {shiftPlatformId ? (
+        {shiftPlatformId && platforms.length === 1 ? (
           <p className="rounded-xl bg-secondary px-3.5 py-3 text-sm">
             {platforms.find((platform) => platform.id === shiftPlatformId)
               ?.name ?? "Tu jornada"}
@@ -129,8 +175,12 @@ export function ReceiptModal({
                     aria-selected={platform.id === platformId}
                     onClick={() => {
                       setPlatformId(platform.id);
+                      const nextShiftId =
+                        platform.id === shiftPlatformId ? shiftId ?? "" : "";
+                      setSelectedShiftId(nextShiftId);
                       updateLocalDraft(userId, draftKey, {
                         platformId: platform.id,
+                        shiftId: nextShiftId,
                       });
                       setPickerOpen(false);
                     }}
@@ -144,6 +194,56 @@ export function ReceiptModal({
             </ModalPopover>
           </div>
         )}
+        <div>
+          <p className="mb-2 text-xs font-semibold">Jornada (opcional)</p>
+          <button
+            ref={shiftTriggerRef}
+            type="button"
+            aria-expanded={shiftPickerOpen}
+            aria-haspopup="listbox"
+            disabled={!platformId || pending}
+            onClick={() => setShiftPickerOpen(!shiftPickerOpen)}
+            className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-input bg-card px-3.5 text-left text-sm disabled:opacity-50"
+          >
+            <span className="min-w-0 truncate">
+              {platformId ? selectedShiftLabel : "Elige primero una plataforma"}
+            </span>
+            <ChevronDown size={17} className="shrink-0" />
+          </button>
+          <ModalPopover
+            anchorRef={shiftTriggerRef}
+            open={shiftPickerOpen}
+            onOpenChange={setShiftPickerOpen}
+          >
+            <div role="listbox" aria-label="Jornadas de esta plataforma">
+              <ShiftOption
+                label="Sin jornada"
+                selected={!selectedShiftId}
+                onClick={() => selectShift("")}
+              />
+              {hasActiveShift && shiftId && (
+                <ShiftOption
+                  label="Jornada actual"
+                  selected={selectedShiftId === shiftId}
+                  onClick={() => selectShift(shiftId)}
+                />
+              )}
+              {completedShifts.map((item) => (
+                <ShiftOption
+                  key={item.id}
+                  label={formatShiftSchedule(item)}
+                  selected={selectedShiftId === item.id}
+                  onClick={() => selectShift(item.id)}
+                />
+              ))}
+            </div>
+          </ModalPopover>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            {completedShifts.length || hasActiveShift
+              ? "Elige la jornada a la que corresponde este cobro."
+              : "Puedes asociar el cobro a una jornada más adelante."}
+          </p>
+        </div>
         <div>
           <label
             htmlFor="receipt-amount"
@@ -247,8 +347,7 @@ export function ReceiptModal({
           />
         </div>
         <p className="text-xs leading-5 text-muted-foreground">
-          Si luego registras el total que muestra la plataforma, estos cobros no
-          se sumarán dos veces.
+          Este cobro es dinero recibido por un pedido. Tu ganancia se registra aparte.
         </p>
         <p className="text-xs text-muted-foreground">
           Este borrador se conserva en tu dispositivo si pierdes conexión.
@@ -266,7 +365,7 @@ export function ReceiptModal({
             type="submit"
             disabled={
               pending ||
-              !(shiftPlatformId ?? platformId) ||
+              !platformId ||
               !amount ||
               (method === "cash" &&
                 (!received ||
@@ -283,4 +382,41 @@ export function ReceiptModal({
       </form>
     </Modal>
   );
+}
+
+function ShiftOption({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="option"
+      aria-selected={selected}
+      onClick={onClick}
+      className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-muted"
+    >
+      <span>{label}</span>
+      {selected && <Check size={15} className="shrink-0 text-primary" />}
+    </button>
+  );
+}
+
+function formatShiftSchedule(shift: WorkShift) {
+  const day = new Intl.DateTimeFormat("es-PE", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: "America/Lima",
+  }).format(new Date(shift.started_at));
+  const time = (value: string) => new Intl.DateTimeFormat("es-PE", {
+    timeStyle: "short",
+    timeZone: "America/Lima",
+  }).format(new Date(value));
+  return `${day} · ${time(shift.started_at)} a ${shift.ended_at ? time(shift.ended_at) : "en curso"}`;
 }

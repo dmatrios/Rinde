@@ -171,7 +171,7 @@ export function EarningsWorkspace({
             <ReceiptText size={18} /> Cobros registrados
           </CardTitle>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Si registras el total de una jornada, los cobros de esa jornada ya están incluidos en él.
+            Los cobros de pedidos se muestran aparte de lo que ganaste en tu jornada.
           </p>
         </CardHeader>
         <CardContent>

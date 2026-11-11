@@ -144,6 +144,7 @@ export function QuickRegisterMenu({
         open={activeForm === "receipt"}
         onOpenChange={(nextOpen) => setActiveForm(nextOpen ? "receipt" : null)}
         platforms={platforms}
+        shifts={shifts}
         shiftId={activeShiftId}
         shiftPlatformId={activeShiftPlatformId}
       />

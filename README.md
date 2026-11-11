@@ -18,7 +18,8 @@ Nombre provisional. Sin datos personales precargados ni credenciales incluidas.
   Al finalizar se puede registrar el ingreso del turno o dejarlo pendiente, y se
   muestra un resumen de cierre con los kilómetros medidos. La pregunta de cierre
   desglosa los cobros asociados, permite asociar cobros del mismo horario que
-  quedaron sin turno y evita sumar dos veces lo que ya incluye el total.
+  quedaron sin turno. Los cobros de pedidos y la ganancia son importes
+  distintos: cobrar más de lo ganado no bloquea el cierre.
 - Registro y edición de ingresos por día o jornada, con importes decimales,
   bloqueo de duplicados y un historial de cambios por registro. La pantalla de
   ingresos muestra también los cobros individuales por separado del total de
@@ -29,6 +30,10 @@ Nombre provisional. Sin datos personales precargados ni credenciales incluidas.
 - Efectivo inicial opcional por jornada, cobros en efectivo, Yape, Plin o tarjeta,
   vuelto calculado, gastos y recargas con método de pago dentro o fuera de la
   jornada, saldo de caja, arqueo de cierre e historial detallado de movimientos.
+  Al registrar un cobro se puede elegir una jornada en curso o finalizada de la
+  misma plataforma, o dejarlo sin jornada para asociarlo después.
+- Límite de cobros en efectivo opcional por plataforma. El excedente se muestra
+  aparte en la jornada y no modifica la ganancia reportada.
 - Reportes navegables por día, semana o mes, con desglose por plataforma y
   gasto, pedidos registrados, detalle en las gráficas y descarga local de un
   PDF con el mismo resumen. La vista «Mi semana» permite recorrer semanas con
@@ -124,11 +129,15 @@ orden:
 
 `supabase/migrations/20261109203917_weekly_goals_cash_reconciliation.sql`
 
+`supabase/migrations/20261111121835_platform_cash_limit.sql`
+
 Las migraciones de movimientos y Plin fueron aplicadas al proyecto Rinde por el
 usuario el 02/11/2026. No las ejecutes otra vez. Verifica el flujo con una sesión
 de la aplicación después de publicarlo.
-La última migración, de meta semanal y arqueo, aún debe aplicarse una sola vez
-antes de usar esas funciones en producción. Las anteriores no deben repetirse.
+La migración de meta semanal y arqueo figura pendiente de verificación remota.
+El usuario confirmó que aplicó la migración del límite de efectivo el
+11/11/2026; falta verificar el flujo con una sesión real. No la ejecutes otra
+vez. Las anteriores tampoco deben repetirse.
 
 La migración está envuelta en una transacción. Si falla, corrige el error antes de
 reintentar; no ejecutes sólo fragmentos. No contiene datos reales ni borra tablas

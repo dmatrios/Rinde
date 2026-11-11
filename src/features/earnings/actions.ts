@@ -6,7 +6,6 @@ import { requireUser } from "@/lib/auth/session";
 import { initialActionState, type ActionState } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
 import { earningFormSchema } from "@/features/earnings/validation";
-import { decimalToCents } from "@/lib/finance/money";
 
 const failure = (message: string): ActionState => ({ status: "error", message });
 const success = (message: string): ActionState => ({ status: "success", message });
@@ -27,28 +26,14 @@ export async function saveShiftCloseIncome(
   if (!parsed.success) return failure("Ingresa un total válido.");
   const user = await requireUser();
   const supabase = await createClient();
-  const [{ data: shift, error: shiftError }, { data: receipts, error: receiptsError }] =
-    await Promise.all([
-      supabase
-        .from("work_shifts")
-        .select("platform_id, started_at, status")
-        .eq("id", parsed.data.shiftId)
-        .eq("user_id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("payment_receipts")
-        .select("amount")
-        .eq("shift_id", parsed.data.shiftId)
-        .eq("user_id", user.id),
-    ]);
-  if (shiftError || receiptsError || !shift || shift.status !== "completed")
+  const { data: shift, error: shiftError } = await supabase
+    .from("work_shifts")
+    .select("platform_id, started_at, status")
+    .eq("id", parsed.data.shiftId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (shiftError || !shift || shift.status !== "completed")
     return failure("Esta jornada no está disponible.");
-  const collectedCents = (receipts ?? []).reduce(
-    (sum, receipt) => sum + decimalToCents(receipt.amount),
-    0,
-  );
-  if (decimalToCents(parsed.data.reportedAmount) < collectedCents)
-    return failure("El total no puede ser menor que los cobros de esta jornada.");
 
   const earning = new FormData();
   earning.set("mode", "shift");

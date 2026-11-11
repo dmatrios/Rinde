@@ -5,7 +5,7 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth/session";
 import type { ActionState } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
-import { decimalToCents, earningGrossCents } from "@/lib/finance/money";
+import { decimalToCents } from "@/lib/finance/money";
 import { paymentMethodSchema } from "@/features/expenses/validation";
 
 const money = z
@@ -56,8 +56,7 @@ export async function savePaymentReceipt(
     if (
       error ||
       !shift ||
-      shift.platform_id !== value.platformId ||
-      shift.status === "completed"
+      shift.platform_id !== value.platformId
     ) {
       return { status: "error", message: "Esa jornada ya no está disponible." };
     }
@@ -78,6 +77,7 @@ export async function savePaymentReceipt(
     };
   revalidatePath("/app");
   revalidatePath("/app/activity");
+  if (value.shiftId) revalidatePath(`/app/activity/${value.shiftId}`);
   revalidatePath("/app/earnings");
   revalidatePath("/app/reports");
   return { status: "success", message: "Cobro registrado." };
@@ -109,7 +109,7 @@ export async function linkReceiptToShift(
         .maybeSingle(),
       supabase
         .from("payment_receipts")
-        .select("platform_id, shift_id, amount")
+        .select("platform_id, shift_id")
         .eq("id", parsed.data.receiptId)
         .eq("user_id", user.id)
         .maybeSingle(),
@@ -121,32 +121,6 @@ export async function linkReceiptToShift(
   ) {
     return { status: "error", message: "Ese cobro no corresponde a esta jornada." };
   }
-
-  const [{ data: earning, error: earningError }, { data: linked, error: linkedError }] =
-    await Promise.all([
-      supabase
-        .from("earnings")
-        .select("reported_amount, tips, bonuses, tips_included, bonuses_included")
-        .eq("user_id", user.id)
-        .eq("shift_id", parsed.data.shiftId)
-        .maybeSingle(),
-      supabase
-        .from("payment_receipts")
-        .select("amount")
-        .eq("user_id", user.id)
-        .eq("shift_id", parsed.data.shiftId),
-    ]);
-  if (earningError || linkedError)
-    return { status: "error", message: "No pudimos revisar el total de la jornada." };
-  const collectedCents = (linked ?? []).reduce(
-    (sum, item) => sum + decimalToCents(item.amount),
-    decimalToCents(receipt.amount),
-  );
-  if (earning && collectedCents > earningGrossCents(earning))
-    return {
-      status: "error",
-      message: "Este cobro supera el total de la jornada. Corrige el ingreso antes de asociarlo.",
-    };
 
   const { data, error } = await supabase
     .from("payment_receipts")

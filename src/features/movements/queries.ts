@@ -16,7 +16,6 @@ export type Movement = {
   shiftId: string | null;
   detail: string | null;
   cashReceivedCents: number | null;
-  coveredByTotal: boolean;
 };
 
 export const getMovements = cache(async (): Promise<Movement[]> => {
@@ -72,15 +71,6 @@ export const getMovements = cache(async (): Promise<Movement[]> => {
   );
   const all: Movement[] = [
     ...receipts.data.map((receipt): Movement => {
-      const coveredByTotal = earnings.data.some(
-        (earning) =>
-          (earning.mode === "shift" &&
-            receipt.shift_id !== null &&
-            earning.shift_id === receipt.shift_id) ||
-          (earning.mode === "daily" &&
-            earning.platform_id === receipt.platform_id &&
-            earning.date === limaDate(receipt.occurred_at)),
-      );
       return {
         id: receipt.id,
         date: receipt.occurred_at,
@@ -96,7 +86,6 @@ export const getMovements = cache(async (): Promise<Movement[]> => {
           receipt.cash_received == null
             ? null
             : decimalToCents(receipt.cash_received),
-        coveredByTotal,
       };
     }),
     ...earnings.data.map((earning): Movement => ({
@@ -109,7 +98,6 @@ export const getMovements = cache(async (): Promise<Movement[]> => {
       shiftId: earning.shift_id,
       detail: earning.notes,
       cashReceivedCents: null,
-      coveredByTotal: false,
     })),
     ...expenses.data.map((expense): Movement => ({
       id: expense.id,
@@ -125,7 +113,6 @@ export const getMovements = cache(async (): Promise<Movement[]> => {
           .join(" · ") || null,
       cashReceivedCents:
         expense.cash_paid == null ? null : decimalToCents(expense.cash_paid),
-      coveredByTotal: false,
     })),
     ...fuel.data.map((refill): Movement => ({
       id: refill.id,
@@ -138,19 +125,9 @@ export const getMovements = cache(async (): Promise<Movement[]> => {
       detail: refill.notes,
       cashReceivedCents:
         refill.cash_paid == null ? null : decimalToCents(refill.cash_paid),
-      coveredByTotal: false,
     })),
   ];
   return all
     .sort((left, right) => right.date.localeCompare(left.date))
     .slice(0, 80);
 });
-
-function limaDate(value: string) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Lima",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(value));
-}

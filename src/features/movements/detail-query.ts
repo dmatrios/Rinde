@@ -18,7 +18,6 @@ export type MovementDetail = {
   rows: Array<{ label: string; value: string }>;
   shift: Pick<WorkShift, "id" | "started_at" | "ended_at"> | null;
   candidates: Array<Pick<WorkShift, "id" | "started_at" | "ended_at">>;
-  coveredByTotal: boolean;
   editHref: string | null;
 };
 
@@ -42,7 +41,7 @@ export async function getMovementDetail(
       .maybeSingle();
     if (error) throw new Error("No pudimos cargar este cobro.");
     if (!receipt) return null;
-    const [platformResult, shiftResult, candidatesResult, shiftEarningResult, dailyEarningResult] =
+    const [platformResult, shiftResult, candidatesResult] =
       await Promise.all([
         supabase
           .from("user_platforms")
@@ -61,24 +60,8 @@ export async function getMovementDetail(
               .order("started_at", { ascending: false })
               .limit(60)
           : Promise.resolve({ data: [], error: null }),
-        receipt.shift_id
-          ? supabase
-              .from("earnings")
-              .select("id")
-              .eq("user_id", user.id)
-              .eq("shift_id", receipt.shift_id)
-              .limit(1)
-          : Promise.resolve({ data: [], error: null }),
-        supabase
-          .from("earnings")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("platform_id", receipt.platform_id)
-          .eq("mode", "daily")
-          .eq("date", limaDate(receipt.occurred_at))
-          .limit(1),
       ]);
-    if (platformResult.error || candidatesResult.error || shiftEarningResult.error || dailyEarningResult.error)
+    if (platformResult.error || candidatesResult.error)
       throw new Error("No pudimos cargar este cobro.");
     return {
       id,
@@ -93,7 +76,6 @@ export async function getMovementDetail(
       rows: [{ label: "Plataforma", value: platformResult.data?.name ?? "Plataforma" }],
       shift: shiftResult,
       candidates: candidatesResult.data,
-      coveredByTotal: shiftEarningResult.data.length > 0 || dailyEarningResult.data.length > 0,
       editHref: null,
     };
   }
@@ -135,7 +117,6 @@ export async function getMovementDetail(
       ],
       shift,
       candidates: [],
-      coveredByTotal: false,
       editHref: "/app/earnings",
     };
   }
@@ -175,7 +156,6 @@ export async function getMovementDetail(
       ],
       shift,
       candidates: [],
-      coveredByTotal: false,
       editHref: `/app/expenses?edit=${id}`,
     };
   }
@@ -205,7 +185,6 @@ export async function getMovementDetail(
     ],
     shift,
     candidates: [],
-    coveredByTotal: false,
     editHref: `/app/expenses?editFuel=${id}`,
   };
 }
@@ -224,16 +203,6 @@ async function ownedShift(
     .maybeSingle();
   if (error) throw new Error("No pudimos cargar la jornada vinculada.");
   return data;
-}
-
-function limaDate(value: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Lima",
-    year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(new Date(value));
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((item) => item.type === type)?.value ?? "";
-  return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
 function formatDate(value: string) {

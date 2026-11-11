@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Check,
@@ -90,6 +90,11 @@ function CurrentShift({
   );
   const { toast } = useToast();
   const lastState = useRef(initialActionState);
+  const currentPlatform = current?.platform;
+  const receiptPlatforms = useMemo(
+    () => (currentPlatform ? [currentPlatform] : []),
+    [currentPlatform],
+  );
 
   useEffect(() => {
     if (!state.message || state === lastState.current) return;
@@ -247,7 +252,7 @@ function CurrentShift({
           key={receiptOpen ? "receipt-open" : "receipt-closed"}
           open={receiptOpen}
           onOpenChange={setReceiptOpen}
-          platforms={[current.platform]}
+          platforms={receiptPlatforms}
           shiftId={current.id}
           shiftPlatformId={current.platform_id}
         />

@@ -17,6 +17,7 @@ import {
   normalizePlatformName,
   OTHER_PLATFORM_VALUE,
 } from "@/features/shifts/platform-options";
+import { z } from "zod";
 
 const success = (message: string): ActionState => ({
   status: "success",
@@ -85,8 +86,12 @@ export async function updatePlatform(
   const user = await requireUser();
   const id = platformIdSchema.safeParse(form.get("platformId"));
   const name = platformNameSchema.safeParse(form.get("name"));
-  if (!id.success || !name.success)
-    return failure("Revisa el nombre de la plataforma.");
+  const cashLimit = z.union([
+    z.literal("").transform(() => null),
+    z.string().trim().regex(/^\d{1,12}(?:\.\d{1,2})?$/).transform(Number),
+  ]).safeParse(form.get("cashLimit"));
+  if (!id.success || !name.success || !cashLimit.success)
+    return failure("Revisa el nombre y el límite de efectivo.");
   try {
     const supabase = await createClient();
     const { data: existingPlatforms, error: existingError } = await supabase
@@ -106,11 +111,28 @@ export async function updatePlatform(
     }
     const { error } = await supabase
       .from("user_platforms")
-      .update({ name: name.data })
+      .update({ name: name.data, cash_limit: cashLimit.data })
       .eq("id", id.data)
       .eq("user_id", user.id)
       .select("id")
       .single();
+    if (
+      error &&
+      cashLimit.data === null &&
+      ["PGRST204", "42703"].includes(error.code)
+    ) {
+      const fallback = await supabase
+        .from("user_platforms")
+        .update({ name: name.data })
+        .eq("id", id.data)
+        .eq("user_id", user.id)
+        .select("id")
+        .single();
+      if (!fallback.error) {
+        refreshShiftViews();
+        return success("Plataforma actualizada.");
+      }
+    }
     if (error?.code === "23505")
       return failure("Ya agregaste esta plataforma.");
     if (error) return failure(unavailable);
@@ -118,7 +140,7 @@ export async function updatePlatform(
     return failure(unavailable);
   }
   refreshShiftViews();
-  return success("Nombre actualizado.");
+  return success("Plataforma actualizada.");
 }
 
 export async function setPlatformActive(

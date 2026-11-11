@@ -71,6 +71,7 @@ export default async function ShiftDetailPage({
           shiftId={shift.id}
           distanceKm={distanceKm}
           savedIncomeCents={detail.shiftEarningCents}
+          cashLimitCents={platform.cash_limit == null ? null : decimalToCents(platform.cash_limit)}
           hasDailyEarning={detail.hasDailyEarning}
           linkedReceipts={detail.linkedReceipts}
           unlinkedReceipts={detail.unlinkedReceipts}
@@ -164,6 +165,23 @@ export default async function ShiftDetailPage({
               label="Efectivo en caja"
               value={formatMoney(decimalToCents(detail.cashBalance))}
             />
+            {platform.cash_limit != null && (
+              <>
+                <TimeRow
+                  label="Límite de efectivo"
+                  value={formatMoney(decimalToCents(platform.cash_limit))}
+                />
+                <TimeRow
+                  label="Excedente de efectivo cobrado"
+                  value={formatMoney(Math.max(0,
+                    detail.linkedReceipts
+                      .filter((receipt) => receipt.payment_method === "cash")
+                      .reduce((total, receipt) => total + decimalToCents(receipt.amount), 0)
+                      - decimalToCents(platform.cash_limit),
+                  ))}
+                />
+              </>
+            )}
             {shift.status === "completed" && (
               <div className="space-y-3 border-t border-border pt-4">
                 {shift.cash_counted != null && (

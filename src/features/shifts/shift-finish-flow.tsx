@@ -31,6 +31,7 @@ export function ShiftFinishFlow({
   shiftId,
   distanceKm,
   savedIncomeCents,
+  cashLimitCents,
   hasDailyEarning,
   linkedReceipts,
   unlinkedReceipts,
@@ -39,6 +40,7 @@ export function ShiftFinishFlow({
   shiftId: string;
   distanceKm: number | null;
   savedIncomeCents: number | null;
+  cashLimitCents: number | null;
   hasDailyEarning: boolean;
   linkedReceipts: PaymentReceipt[];
   unlinkedReceipts: PaymentReceipt[];
@@ -69,8 +71,12 @@ export function ShiftFinishFlow({
     (sum, receipt) => sum + decimalToCents(receipt.amount),
     0,
   );
-  const belowCollected =
-    amount !== "" && decimalToCents(amount) < linkedTotalCents;
+  const cashCollectedCents = visibleLinked
+    .filter((receipt) => receipt.payment_method === "cash")
+    .reduce((sum, receipt) => sum + decimalToCents(receipt.amount), 0);
+  const cashExcessCents = cashLimitCents === null
+    ? null
+    : Math.max(0, cashCollectedCents - cashLimitCents);
 
   const linkReceipt = (receiptId: string) => {
     setLinkingId(receiptId);
@@ -182,7 +188,7 @@ export function ShiftFinishFlow({
             <form onSubmit={save} className="space-y-5" aria-busy={pending}>
               <div className="rounded-xl border border-border bg-muted/35 p-4">
                 <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-xs font-semibold">Cobros de esta jornada</p>
+                  <p className="text-xs font-semibold">Cobros de pedidos de esta jornada</p>
                   <strong className="text-sm tabular-nums">
                     {formatMoney(linkedTotalCents)}
                   </strong>
@@ -206,6 +212,18 @@ export function ShiftFinishFlow({
                     Aún no hay cobros asociados a este turno.
                   </p>
                 )}
+                {cashLimitCents !== null && (
+                  <div className="mt-3 space-y-1 border-t border-border pt-3 text-xs">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">Límite de efectivo</span>
+                      <span className="tabular-nums">{formatMoney(cashLimitCents)}</span>
+                    </div>
+                    <div className="flex justify-between gap-3 font-semibold">
+                      <span>Excedente de efectivo</span>
+                      <span className="tabular-nums">{formatMoney(cashExcessCents ?? 0)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
               {visibleUnlinked.length > 0 && (
                 <ReceiptLinkList
@@ -217,7 +235,7 @@ export function ShiftFinishFlow({
               )}
               <div>
                 <label htmlFor="finish-income" className="mb-2 block text-xs font-semibold">
-                  Total del turno
+                  Ganancia del turno
                 </label>
                 <div className="relative">
                   <Wallet size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -233,14 +251,9 @@ export function ShiftFinishFlow({
                   />
                 </div>
                 <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  Escribe el total de la plataforma, incluidos los cobros de arriba.
-                  Al guardarlo no se sumarán dos veces.
+                  Escribe lo que ganaste según tu plataforma. Los cobros de pedidos
+                  son dinero recibido de clientes y pueden superar tu ganancia.
                 </p>
-                {belowCollected && (
-                  <p role="alert" className="mt-2 text-xs font-medium text-destructive">
-                    El total debe ser al menos {formatMoney(linkedTotalCents)}, que ya registraste en cobros.
-                  </p>
-                )}
               </div>
               {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -250,7 +263,7 @@ export function ShiftFinishFlow({
                 }}>
                   Agregar más tarde
                 </Button>
-                <Button type="submit" size="sm" disabled={pending || linkPending || !amount || belowCollected}>
+                <Button type="submit" size="sm" disabled={pending || linkPending || !amount}>
                   {pending ? <LoaderCircle size={17} className="animate-spin" aria-label="Guardando" /> : "Guardar y continuar"}
                 </Button>
               </div>
@@ -321,7 +334,7 @@ function ReceiptLinkList({
     <div className="rounded-xl border border-primary/20 bg-secondary/50 p-4">
       <p className="text-xs font-semibold">Cobros sin jornada de este horario</p>
       <p className="mt-1 text-xs leading-5 text-muted-foreground">
-        Asócialos si pertenecen a este turno. Así se incluirán en el total.
+        Asócialos si pertenecen a este turno. Se mostrarán aparte de tu ganancia.
       </p>
       <ul className="mt-3 divide-y divide-border/70">
         {receipts.map((receipt) => (

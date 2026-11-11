@@ -5,7 +5,6 @@ import type {
   Expense,
   ExpenseCategory,
   FuelRefill,
-  PaymentReceipt,
   ShiftPause,
   WorkShift,
 } from "@/types/database";
@@ -23,7 +22,6 @@ export function calculateWeeklyProductivity({
   shifts,
   pauses,
   earnings,
-  receipts,
   expenses,
   fuel,
   categories,
@@ -31,7 +29,6 @@ export function calculateWeeklyProductivity({
   shifts: WorkShift[];
   pauses: ShiftPause[];
   earnings: Earning[];
-  receipts: PaymentReceipt[];
   expenses: Expense[];
   fuel: FuelRefill[];
   categories: ExpenseCategory[];
@@ -53,18 +50,10 @@ export function calculateWeeklyProductivity({
     const shiftEarnings = earnings.filter(
       (earning) => earning.shift_id === shift.id,
     );
-    const shiftReceipts = receipts.filter(
-      (receipt) => receipt.shift_id === shift.id,
+    const gross = shiftEarnings.reduce(
+      (sum, earning) => sum + earningGrossCents(earning),
+      0,
     );
-    const gross = shiftEarnings.length
-      ? shiftEarnings.reduce(
-          (sum, earning) => sum + earningGrossCents(earning),
-          0,
-        )
-      : shiftReceipts.reduce(
-          (sum, receipt) => sum + decimalToCents(receipt.amount),
-          0,
-        );
     if (gross <= 0) continue;
     const operational = expenses
       .filter(

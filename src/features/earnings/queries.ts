@@ -239,18 +239,9 @@ export const getDashboardEarningsSummary = cache(
             earning.date === date &&
             earning.platform_id === receipt.platform_id),
       );
-      if (coveredEarnings.length) {
-        if (coveredEarnings.every((earning) => earning.orders === null)) {
-          ordersByDate.set(date, (ordersByDate.get(date) ?? 0) + 1);
-        }
-        continue;
+      if (coveredEarnings.every((earning) => earning.orders === null)) {
+        ordersByDate.set(date, (ordersByDate.get(date) ?? 0) + 1);
       }
-      grossByDate.set(
-        date,
-        (grossByDate.get(date) ?? 0) + decimalToCents(receipt.amount),
-      );
-      countByDate.set(date, (countByDate.get(date) ?? 0) + 1);
-      ordersByDate.set(date, (ordersByDate.get(date) ?? 0) + 1);
     }
     for (const expense of expensesResult.data as Array<
       Pick<Expense, "occurred_at" | "amount">

@@ -100,21 +100,10 @@ export function buildReportPeriod(
           earning.date === date &&
           earning.platform_id === receipt.platform_id),
     );
-    if (coveredEarnings.length) {
-      if (coveredEarnings.every((earning) => earning.orders === null)) {
-        const day = daily.get(date);
-        if (day) day.orders += 1;
-      }
-      continue;
+    if (coveredEarnings.every((earning) => earning.orders === null)) {
+      const day = daily.get(date);
+      if (day) day.orders += 1;
     }
-    const cents = decimalToCents(receipt.amount);
-    const day = daily.get(date);
-    if (day) {
-      day.grossCents += cents;
-      day.orders += 1;
-    }
-    const platform = platformsById.get(receipt.platform_id) ?? "Plataforma";
-    byPlatform.set(platform, (byPlatform.get(platform) ?? 0) + cents);
   }
 
   for (const expense of sources.expenses) {

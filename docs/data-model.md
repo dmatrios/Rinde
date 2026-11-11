@@ -14,7 +14,7 @@ vincular, por ejemplo, la jornada de otro usuario aunque se conozca su UUID.
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ----- |
 | profiles           | `id` PK/FK auth.users; display_name                                                                                               | 1     |
 | user_settings      | `user_id` PK; PEN, America/Lima, modo daily/shift y RUC opcional                                                                  | 1     |
-| user_platforms     | id, user_id, name, active; nombre normalizado único por usuario                                                                   | 1     |
+| user_platforms     | id, user_id, name, active, cash_limit opcional; nombre normalizado único por usuario                                             | 1     |
 | vehicles           | user_id PK, name, odometer_km opcional; un vehículo principal                                                                     | 1     |
 | work_shifts        | id, user_id, platform_id, started_at, ended_at, status, odometer_start/end, opening_cash, cash_counted/at                        | 2     |
 | shift_pauses       | id, user_id, shift_id, started_at, ended_at                                                                                       | 2     |
@@ -100,10 +100,12 @@ Indicadores previstos:
 - Ganancia bruta/h y operativa/h: denominadores de tiempo efectivo del mismo
   período. Sin horas, devolver ausencia de indicador, nunca infinito ni cero falso.
 
-Los cobros individuales cuentan como ingresos y como un pedido cuando no hay un
-ingreso total registrado para la misma jornada o plataforma y día. Cuando existe
-ese total, el cobro sigue visible en movimientos pero no se vuelve a sumar al
-reporte. El efectivo inicial no es ingreso: el saldo de caja de la jornada es
+Los cobros individuales representan pagos de clientes, no ingresos propios. No
+se suman a la ganancia aunque no haya un ingreso total registrado. Pueden contar
+como pedidos si el ingreso no indica una cantidad. El límite opcional de efectivo
+de cada plataforma sirve para mostrar el excedente de cobros en efectivo de
+cada jornada por separado; no modifica los ingresos ni el saldo de caja. El
+efectivo inicial no es ingreso: el saldo de caja de la jornada es
 efectivo inicial + cobros en efectivo − gastos y recargas en efectivo vinculados.
 El vuelto en cobros es efectivo entregado al cliente y no se descuenta otra vez
 del importe cobrado. En gastos y recargas, `cash_paid` permite mostrar el vuelto

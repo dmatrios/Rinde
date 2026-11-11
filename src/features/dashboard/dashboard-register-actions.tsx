@@ -99,6 +99,7 @@ export function DashboardRegisterActions({
         open={activeForm === "receipt"}
         onOpenChange={(open) => setActiveForm(open ? "receipt" : null)}
         platforms={platforms}
+        shifts={shifts}
         shiftId={activeShiftId}
         shiftPlatformId={activeShiftPlatformId}
       />
